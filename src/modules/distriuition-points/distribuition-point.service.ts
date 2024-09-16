@@ -18,6 +18,7 @@ import { ProductMessagesHelper } from '../products/helpers/product.helper';
 import { CreateUserDto } from '../auth/dto/auth.dto';
 import { SearchDistribuitionPoin } from './dto/search-distribuition-point';
 import { Paginate } from 'src/common/interface';
+import { ProducatType } from '../products/enums/products.enum';
 
 @Injectable()
 export class DistribuitionPointsService {
@@ -210,6 +211,44 @@ export class DistribuitionPointsService {
     return {
       message:
         DistribuitionPointMessagesHelper.PRODUCT_REMOVED_DISTRIBUITION_POINT,
+    };
+  }
+
+  public async statistics(distribuitionPointId: string) {
+    const totalProducts = await this.productsRepository
+      .createQueryBuilder('products')
+      .select('SUM(products.weight)', 'totalWeight')
+      .where('products.distribuitionPointId = :distribuitionPointId', {
+        distribuitionPointId,
+      })
+      .getRawOne();
+
+    const perishableProductsCount = await this.productsRepository
+      .createQueryBuilder('products')
+      .where(
+        'products.distribuitionPointId = :distribuitionPointId AND products.type = :type',
+        {
+          distribuitionPointId,
+          type: ProducatType.PERISHABLE,
+        },
+      )
+      .getCount();
+
+    const nonPerishableProductsCount = await this.productsRepository
+      .createQueryBuilder('products')
+      .where(
+        'products.distribuitionPointId = :distribuitionPointId AND products.type = :type',
+        {
+          distribuitionPointId,
+          type: ProducatType.NOT_PERISHABBLE,
+        },
+      )
+      .getCount();
+
+    return {
+      totalProducts: totalProducts.totalWeight || 0,
+      perishableProductsCount,
+      nonPerishableProductsCount,
     };
   }
 }

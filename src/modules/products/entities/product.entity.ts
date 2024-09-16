@@ -26,11 +26,11 @@ export class Products {
   })
   type: ProducatType;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: 'int', nullable: true, default: 0 })
   quantity: number;
 
-  @Column({ nullable: true })
-  weight: string;
+  @Column({ type: 'float', nullable: true, default: 0 })
+  weight: number;
 
   @Column({ nullable: true })
   description: string;

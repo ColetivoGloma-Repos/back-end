@@ -22,8 +22,8 @@ export class CreateProduct {
   quantity: number;
 
   @ApiProperty()
-  @IsString()
-  weight: string;
+  @IsNumber()
+  weight: number;
 
   @ApiProperty()
   @IsString()

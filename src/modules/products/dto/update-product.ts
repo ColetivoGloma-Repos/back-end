@@ -19,9 +19,9 @@ export class UpdateProduct {
   quantity: number;
 
   @ApiProperty()
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  weight: string;
+  weight: number;
 
   @ApiProperty()
   @IsString()
