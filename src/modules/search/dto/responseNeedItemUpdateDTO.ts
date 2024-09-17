@@ -20,6 +20,7 @@ export class ResponseNeedItemUpdateDTO {
 
 
   constructor(needItem: NeedItem){
+    this.id = needItem.id
     this.coordinator = needItem.coordinator.name;
     this.coordinator_username = needItem.coordinator.username;
     this.title = needItem.title;
