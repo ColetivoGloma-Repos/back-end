@@ -4,7 +4,6 @@ import { NeedItem } from "src/modules/need/entities/needItems.entity";
 import { NeedVolunteers } from "src/modules/need/entities/needVolunteers.entity";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Shelter } from "src/modules/shelter/entities/shelter.entity";
-import { EmailQueue } from "src/modules/schedule/entity/emailQueue.entity";
 
 @Entity()
 export class Management {
@@ -27,16 +26,14 @@ export class Management {
   @JoinColumn()
   collectPoint: Address
 
-  @ManyToMany(() => NeedItem, (need) => need)
+  @ManyToMany(() => NeedItem, (needItem) => needItem.managements)
   @JoinTable()
   needItem?: NeedItem[];
-
-  @ManyToMany(() => NeedVolunteers, (need) => need)
+  
+  @ManyToMany(() => NeedVolunteers, (needVolunteer) => needVolunteer.managements)
   @JoinTable()
   needVolunteer?: NeedVolunteers[];
-
-  @OneToMany(() => EmailQueue, (emailQueue) => emailQueue.management)
-  emailQueue: EmailQueue[]; 
+  
 
   @Column({ default: false })
   processed: boolean;

@@ -36,7 +36,6 @@ export class ResponseNeedVolunteerUpdateDTOToList{
     this.shelter_id = needVolunteer.shelter.id,
     this.shelter_name = needVolunteer.shelter.name,
     this.shelter_phone = needVolunteer.shelter.phone
-    this.shelter_address = new ResponseAddressDTO(needVolunteer.shelter.address)   
     this.volunteers = needVolunteer.volunteers,
     this.status = needVolunteer.status,
     this.limitDate = needVolunteer.limitDate,

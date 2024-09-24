@@ -18,7 +18,6 @@ export class VerifyIfShelterExits {
     const shelter = await this.shelterRepository.findOne({
       where: { id: id}
     });
-  
     if(!shelter){
       throw new NotFoundException('Abrigo não encontrado.');
     }

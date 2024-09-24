@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { Priority } from '../enums/enumPriority';
 import { Status } from '../enums/enumsStatus';
 import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
+import { Management } from 'src/modules/management/entities/management.entity';
 
 
 @Entity()
@@ -56,5 +57,7 @@ export class NeedVolunteers {
   @DeleteDateColumn()
   deleted: Date;
 
- 
+  @ManyToMany(() => Management, (management) => management.needVolunteer)
+  managements?: Management[];
+  
 }

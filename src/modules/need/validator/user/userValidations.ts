@@ -8,7 +8,7 @@ export function userValidations(user: User){
   }
 
   if(user.status != Status.APPROVED){
-    throw new ForbiddenException("Sem permissão para criar necessidades..");
+    throw new ForbiddenException("Sem permissão para criar necessidades.");
   }
 
 }

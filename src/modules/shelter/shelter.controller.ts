@@ -23,7 +23,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateUserDto } from '../auth/dto/auth.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SearchShelter } from './dto/search-shelter';
 
 @ApiTags('Shelter')
@@ -34,6 +34,7 @@ export class ShelterController {
   @Post('/')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('coordinator', 'user')
+  @ApiBearerAuth()
   async create(
     @CurrentUser() currentUser: CreateUserDto,
     @Body() createShelter: CreateShelterDto,
@@ -84,7 +85,7 @@ export class ShelterController {
 
   @Delete('/:shelterId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  @Roles('coordinator')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('shelterId') shelterId: string) {
     return await this.shelterService.remove(shelterId);
