@@ -24,6 +24,7 @@ export class ResponseNeedVolunteerUpdateDTO {
 
 
   constructor(needVolunteer: NeedVolunteers){
+    this.id = needVolunteer.id
     this.coordinator = needVolunteer.coordinator.name,
     this.coordinator_username = needVolunteer.coordinator.username,
     this.title = needVolunteer.title,

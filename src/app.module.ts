@@ -13,7 +13,6 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SearchModule } from './modules/search/search.module';
 import { ManagementModule } from './modules/management/management.module';
-import { Schedule } from './modules/schedule/schedule.module';
 
 @Module({
   imports: [
@@ -31,7 +30,6 @@ import { Schedule } from './modules/schedule/schedule.module';
     }),
     SearchModule,
     ManagementModule,
-    Schedule,
   ],
   controllers: [AppController],
   providers: [AppService],

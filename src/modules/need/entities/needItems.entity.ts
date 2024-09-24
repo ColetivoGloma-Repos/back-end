@@ -1,8 +1,9 @@
 import { User } from 'src/modules/auth/entities/auth.enity';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, ManyToMany } from 'typeorm';
 import { Status } from '../enums/enumsStatus';
 import { Priority } from '../enums/enumPriority';
 import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
+import { Management } from 'src/modules/management/entities/management.entity';
 
 
 @Entity()
@@ -46,7 +47,10 @@ export class NeedItem {
   @ManyToOne(() => User)
   @JoinColumn({ name: "donorId"})
   donor?: User;
-  
+
+  @ManyToMany(() => Management, (management) => management.needItem)
+  managements?: Management[];
+
   /*Assim que empresa for aceita, ela será colocada aqui como possível aceitação
   @ManyToOne(() => Company)
   @JoinColumn({ name: "companyId"})
