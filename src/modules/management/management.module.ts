@@ -6,7 +6,6 @@ import { NeedItem } from "../need/entities/needItems.entity";
 import { NeedVolunteers } from "../need/entities/needVolunteers.entity";
 import { Address } from "../auth/entities/adress.enity";
 import { User } from "../auth/entities/auth.enity";
-import { MailModule } from "../mail/mail.module";
 import { Shelter } from "../shelter/entities/shelter.entity";
 import { Management } from "./entities/management.entity";
 import { FindNeedsItem } from "./utils/findNeedItem";
@@ -20,8 +19,7 @@ import { ManagementController } from "./management.controller";
   imports: [
     TypeOrmModule.forFeature([Management, NeedItem, NeedVolunteers, Address, User, Shelter]),
     forwardRef(() => NeedModule),
-    forwardRef(() => Shelter),
-    MailModule
+    forwardRef(() => Shelter)
   ],
   providers: [ManagementService, FindNeedsItem, FindNeedsVolunteer, VerifyIfUserExits, VerifyIfShelterExits],
   controllers: [ManagementController],

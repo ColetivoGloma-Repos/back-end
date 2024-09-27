@@ -1,7 +1,5 @@
 import { MailerOptions } from '@nestjs-modules/mailer';
-import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import * as AWS from 'aws-sdk';
-
+/*
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -24,6 +22,5 @@ export const mailConfig: MailerOptions = {
     },
   },
 };
+*/
 
-// henrique.florencio307@gmail.com
-// senhaForte

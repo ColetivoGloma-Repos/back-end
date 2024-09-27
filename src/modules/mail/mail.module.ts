@@ -1,3 +1,4 @@
+/*
 import { Module } from '@nestjs/common';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule } from '@nestjs/config';
@@ -10,3 +11,4 @@ import { MailService } from './mail.service';
   exports: [MailService],
 })
 export class MailModule {}
+*/
