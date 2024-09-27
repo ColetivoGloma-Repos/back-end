@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
-import * as AWS from 'aws-sdk';
 import * as Handlebars from 'handlebars';
 import { SendMailActivationUserDto } from './dto/sendmailactivationuser.dto';
 import { SendMailResetPasswordDto } from './dto/sendmailresetpassword.dto';
@@ -8,12 +7,8 @@ import { Address } from '../auth/entities/adress.enity';
 
 @Injectable()
 export class MailService {
-  private s3: AWS.S3;
 
-  constructor(private readonly mailerService: MailerService) {
-    this.s3 = new AWS.S3();
-  }
-
+/*
   private async getS3File(bucket: string, key: string): Promise<Buffer> {
     const params = { Bucket: bucket, Key: key };
     const data = await this.s3.getObject(params).promise();
@@ -159,4 +154,5 @@ export class MailService {
       ],
     });
   }
+    */
 }
