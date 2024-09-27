@@ -6,7 +6,6 @@ import { Repository } from "typeorm";
 import { FilesService } from "./utils/file.service";
 import { hash, genSalt } from 'bcrypt';
 import { geoResult } from "./utils/geoResult";
-import { deleteFile } from "./utils/deleteFIle";
 import { Company } from "./entities/company.entity";
 import { CreateCompanyDTO } from "./dto/request/CreateCompanyDTO";
 import { JwtService } from "@nestjs/jwt";
@@ -92,7 +91,7 @@ export class CompanyService {
       company.address = updatedAddress;
     }
     if(file){
-      await deleteFile(company.fileEntity.url);
+  
       const logo = await this.fileService.save(file);
       company.fileEntity = logo;
     }
@@ -119,7 +118,6 @@ export class CompanyService {
     const company = await this.profile(id);
     company.deletedAt = new Date();
     company.isActive = false;
-    await deleteFile(company.fileEntity.url);
     await this.companyRepository.delete(company.id)
     
     return {message: "Conta removida."};
