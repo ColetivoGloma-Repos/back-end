@@ -1,3 +1,4 @@
+/*
 import * as multerS3 from 'multer-s3';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -21,3 +22,4 @@ const multerConfig = {
 };
 
 export default multerConfig;
+*/

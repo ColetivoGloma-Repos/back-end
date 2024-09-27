@@ -1,3 +1,4 @@
+/*
 import { EnvConfig } from "src/config";
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { configS3 } from "./s3Config";
@@ -19,3 +20,4 @@ export const deleteFile = async(url: string) => {
     throw new Error("Erro ao excluir a imagem: " + error.message);
   }
 }
+ */ 

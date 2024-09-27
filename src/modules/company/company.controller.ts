@@ -1,7 +1,6 @@
 import { Body, Controller, Delete, Get, Request, Param, Post, Put, UploadedFile, UseGuards, UseInterceptors, HttpStatus } from "@nestjs/common";
 import { CreateCompanyDTO } from "./dto/request/CreateCompanyDTO";
 import { CompanyService } from "./company.service";
-import multerConfig from "./utils/multer.config";
 import { ApiTags } from '@nestjs/swagger';
 import { Company } from "./entities/company.entity";
 import { UpdateCompanyResponserDTO } from "./dto/response/UpdateCompanyResponseDTO ";
