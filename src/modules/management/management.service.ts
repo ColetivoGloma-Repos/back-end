@@ -97,7 +97,6 @@ export class ManagementService {
   }
   }
 
-
   async findAll(query: SearchManagement):  Promise<Paginate<Management>>{
     try{
       const queryBuilder = this.managementRepository
