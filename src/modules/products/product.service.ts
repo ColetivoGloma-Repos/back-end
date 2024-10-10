@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   NotFoundException,
@@ -20,7 +21,9 @@ import { User } from '../auth/entities/auth.enity';
 import { CreateUserDto } from '../auth/dto/auth.dto';
 import { SearchProduct } from './dto/search-product';
 import { Paginate } from 'src/common/interface';
-import { ProducatType } from './enums/products.enum';
+import { ProductType } from './enums/products.enum';
+import logger from 'src/logger';
+import { validatorTypeProduct } from './validator/validatorTypeProduct';
 
 @Injectable()
 export class ProductService {
@@ -37,39 +40,53 @@ export class ProductService {
     createProduct: CreateProduct,
     currentUser: CreateUserDto,
   ) {
+    try{
     const user = await this.usersRepository.findOne({
       where: { id: currentUser.id },
     });
+       validatorTypeProduct(createProduct);
+      const product = this.productsRepository.create(createProduct);
 
-    const product = this.productsRepository.create(createProduct);
+      if (createProduct.distributionPointId) {
+        const distribuitionPoint = await this.distribuitionPointService.findOne(
+          createProduct.distributionPointId,
+        );
 
-    if (createProduct.distribuitionPointId) {
-      const distribuitionPoint = await this.distribuitionPointService.findOne(
-        createProduct.distribuitionPointId,
-      );
-
-      product.distribuitionPoint = distribuitionPoint;
-    }
+        product.distribuitionPoint = distribuitionPoint;
+      }
 
     product.creator = user;
 
     await this.productsRepository.save(product);
 
     return product;
+  }  catch (error) {
+    logger.error(error);
+    throw error
+   }  
   }
 
   public async update(updateProduct: UpdateProduct, id: string) {
-    const product = await this.findOne(id);
-
-    const newProduct = {
-      ...product,
-      ...updateProduct,
-    };
-
-    const saveProduct = await this.productsRepository.save(newProduct);
-
-    return saveProduct;
-  }
+    try {
+      const product = await this.findOne(id);
+      if(product.weight == 0.00 && updateProduct.weight > 0.00){
+          throw new BadRequestException("Peso não pode ser adicionado a produtos não alimentares");
+      }   
+     
+      const newProduct = {
+        ...product,
+        ...updateProduct,
+      };
+  
+      const saveProduct = await this.productsRepository.save(newProduct);
+  
+      return saveProduct;
+    } catch (error) {
+      logger.error(error);
+      throw error
+     }  
+    }
+   
 
   public async findOne(
     id: string,

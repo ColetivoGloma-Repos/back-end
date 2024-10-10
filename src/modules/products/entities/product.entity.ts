@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { ProducatType } from '../enums/products.enum';
+import { ProductType } from '../enums/products.enum';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
 
@@ -21,18 +21,19 @@ export class Products {
 
   @Column({
     type: 'enum',
-    enum: ProducatType,
-    default: ProducatType.PERISHABLE,
+    enum: ProductType,
+    default: ProductType.OTHER,
   })
-  type: ProducatType;
+  type: ProductType;
 
   @Column({ type: 'int', default: 0 })
   quantity: number;
 
-  @Column({ nullable: true })
-  weight: string;
+  @Column({  type: 'decimal', precision: 10, scale: 2, default: 0 })
+  weight: number;
 
-  @Column({ nullable: true })
+ 
+  @Column({ type: 'varchar', length: 255, nullable: true })
   description: string;
 
   @ManyToOne(() => User, (user) => user)

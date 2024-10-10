@@ -18,7 +18,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateUserDto } from '../auth/dto/auth.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SearchProduct } from './dto/search-product';
 
 @ApiTags('Products')
@@ -28,6 +28,7 @@ export class ProductController {
 
   @Post('/')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @ApiBearerAuth()
   @Roles('coordinator', 'user')
   async create(
     @CurrentUser() currentUser: CreateUserDto,
@@ -38,7 +39,8 @@ export class ProductController {
 
   @Patch('/:productId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('coordinator', 'user')
+  @ApiBearerAuth()
+  @Roles('coordinator', 'user') 
   async update(
     @Param('productId') productId: string,
     @Body() updateProduct: UpdateProduct,

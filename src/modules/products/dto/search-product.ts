@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, ValidateIf } from 'class-validator';
 import { QueryRequest } from 'src/common/dto/query';
-import { ProducatType } from '../enums/products.enum';
+import { ProductType } from '../enums/products.enum';
 
 export class SearchProduct extends QueryRequest {
   @ApiProperty()
@@ -15,12 +15,12 @@ export class SearchProduct extends QueryRequest {
   search: string;
 
   @ApiProperty({
-    enum: ProducatType,
+    enum: ProductType,
     enumName: 'ProducatType',
     required: false,
   })
   @ValidateIf((o) => o.type !== '')
-  @IsEnum(ProducatType)
+  @IsEnum(ProductType)
   @IsString()
   @IsOptional()
   type: string;

@@ -98,4 +98,16 @@ export class DistribuitionPointsController {
       );
     }
   }
+
+  @Get('/:distribuitionPointId/statistic')
+  async statistics(@Param('distribuitionPointId') distribuitionPointId: string) {
+    const result = await this.distribuitionPointService.statistics(
+      distribuitionPointId
+    );
+    return  result ; 
+  }
 }
+
+
+
+
