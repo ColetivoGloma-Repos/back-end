@@ -109,4 +109,13 @@ export class ShelterController {
       );
     }
   }
+
+  @Get('/:coordinatorId/shelters')
+  @UseGuards(AuthGuard('jwt'))
+  async listShelterByCoordinator(
+    @Param('coordinatorId') coordinatorId: string,
+    @Query() query: SearchCoordinatorDto,
+  ) {
+    return await this.shelterService.listShelterByCoordinator(coordinatorId, query);
+  }
 }
