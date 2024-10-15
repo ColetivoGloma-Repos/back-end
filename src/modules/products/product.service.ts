@@ -44,7 +44,7 @@ export class ProductService {
     const user = await this.usersRepository.findOne({
       where: { id: currentUser.id },
     });
-       validatorTypeProduct(createProduct);
+      validatorTypeProduct(createProduct);
       const product = this.productsRepository.create(createProduct);
 
       if (createProduct.distributionPointId) {

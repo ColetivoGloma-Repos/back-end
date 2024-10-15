@@ -1,3 +1,4 @@
+import { typeStatus } from './../../../../front-end/src/interfaces/auth';
 import {
   ForbiddenException,
   Inject,
@@ -19,6 +20,7 @@ import { CreateUserDto } from '../auth/dto/auth.dto';
 import { SearchDistribuitionPoin } from './dto/search-distribuition-point';
 import { Paginate } from 'src/common/interface';
 import { ProductType } from '../products/enums/products.enum';
+import { ProductStatus } from '../products/enums/product.status';
 
 @Injectable()
 export class DistribuitionPointsService {
@@ -214,7 +216,7 @@ export class DistribuitionPointsService {
     };
   }
 
-  async statistics(distributionPointId: string) {
+  async statistics(distributionPointId: string, status: ProductStatus) {
     // Obtém o peso total dos produtos no ponto de distribuição
     const totalProducts = await this.totalWeight(distributionPointId);
     // Obtém a quantidade total dos produtos no ponto de distribuição
@@ -230,9 +232,10 @@ export class DistribuitionPointsService {
     
     //função responsável por acionar a função de pesquisa de product.
     const productsCount = productTypesArrayUpdate.map(async (t) => {
-      return this.countProductsByType(t, distributionPointId)
+      return this.countProductsByType(t, distributionPointId, status)
     })
 
+  
     //Através do paralelismo, chama a função que chama a função de conta, evitando sobrecarga no sistema. 
     const productResult = await Promise.all(productsCount);     
     const products = productResult.flat();
@@ -257,7 +260,7 @@ export class DistribuitionPointsService {
     };
   }
   
-  private async countProductsByType(type: ProductType, distributionPointId: string): Promise<any>{
+  private async countProductsByType(type: ProductType, distributionPointId: string, status: ProductStatus): Promise<any>{
     
     const count = await this.productsRepository
     .createQueryBuilder('products')
@@ -266,6 +269,7 @@ export class DistribuitionPointsService {
       distributionPointId,
       type: type,
     })
+    .andWhere('products.status != :status', { status: status }) 
     .getRawOne();
 
     interface IProduct {

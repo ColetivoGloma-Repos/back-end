@@ -21,6 +21,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateUserDto } from '../auth/dto/auth.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { SearchDistribuitionPoin } from './dto/search-distribuition-point';
+import { ProductStatus } from '../products/enums/product.status';
 
 @ApiTags('Distribution points')
 @Controller('distribuitionPoint')
@@ -99,10 +100,20 @@ export class DistribuitionPointsController {
     }
   }
 
-  @Get('/:distribuitionPointId/statistic')
-  async statistics(@Param('distribuitionPointId') distribuitionPointId: string) {
+  @Get('/:distribuitionPointId/statistic-received')
+  async statisticsReceived(@Param('distribuitionPointId') distribuitionPointId: string) {
     const result = await this.distribuitionPointService.statistics(
-      distribuitionPointId
+      distribuitionPointId,
+      ProductStatus.RECEIVED
+    );
+    return  result ; 
+  }
+
+  @Get('/:distribuitionPointId/statistic-requested')
+  async statisticsRequested(@Param('distribuitionPointId') distribuitionPointId: string) {
+    const result = await this.distribuitionPointService.statistics(
+      distribuitionPointId,
+      ProductStatus.REQUESTED
     );
     return  result ; 
   }
