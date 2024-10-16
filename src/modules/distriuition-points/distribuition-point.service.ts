@@ -1,4 +1,3 @@
-import { typeStatus } from './../../../../front-end/src/interfaces/auth';
 import {
   ForbiddenException,
   Inject,

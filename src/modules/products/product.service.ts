@@ -142,6 +142,10 @@ export class ProductService {
     if (query.type) {
       queryBuilder.andWhere('product.type = :type', { type: query.type });
     }
+    
+    if (query.status) {
+      queryBuilder.andWhere('product.status = :status', { status: `${query.status}` });
+    }
     if (distribuitionPointId) {
       await this.distribuitionPointService.findOne(distribuitionPointId);
       queryBuilder.andWhere(
@@ -149,7 +153,7 @@ export class ProductService {
         { distribuitionPointId },
       );
     }
-
+    
     const limit = parseInt(query.limit as string, 10) || 10;
     const offset = parseInt(query.offset as string, 10) || 0;
 
