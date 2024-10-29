@@ -27,8 +27,8 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/document', app, document);
   appConfig(app);
-  //não esquece mano, alterar para 3000
-  await app.listen(8080);
+  
+  await app.listen(3000);
  
 }
 

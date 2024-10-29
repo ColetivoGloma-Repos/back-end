@@ -6,23 +6,7 @@ import { ProductStatus } from '../enums/product.status';
 
 export class CreateProductDonate {
 
-  @ApiHideProperty()
-  @IsEmpty()
-  id: string;
 
-  @ApiProperty()
-  @IsString()
-  name: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  type: ProductType;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  status: ProductStatus;
 
   @ApiProperty()
   @IsNumber()
@@ -35,17 +19,9 @@ export class CreateProductDonate {
   @Type(() => Number)
   weight: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  description: string;
 
   @ApiProperty()
   @IsString()
-  distributionPointId: string;
-
-  @ApiProperty()
-  @IsString()
-  productUpdateReduce: string;  
+  productReferenceID: string;  
 
 }

@@ -100,8 +100,11 @@ export class DistribuitionPointsController {
     }
   }
 
-  @Get('/:distribuitionPointId/statistic-received')
-  async statisticsReceived(@Param('distribuitionPointId') distribuitionPointId: string) {
+  @Get('/:distribuitionPointId/statistic/:status')
+  async statisticsReceived(
+    @Param('distribuitionPointId') distribuitionPointId: string,
+  
+  ) {
     const result = await this.distribuitionPointService.statistics(
       distribuitionPointId,
       ProductStatus.RECEIVED
@@ -115,7 +118,7 @@ export class DistribuitionPointsController {
       distribuitionPointId,
       ProductStatus.REQUESTED
     );
-    return  result ; 
+    return result ; 
   }
 }
 

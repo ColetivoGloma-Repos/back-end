@@ -42,7 +42,6 @@ export class CreateProduct {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
   distributionPointId: string;
 
   
