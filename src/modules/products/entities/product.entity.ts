@@ -1,3 +1,4 @@
+import { Request } from '@nestjs/common';
 import {
   Column,
   CreateDateColumn,
@@ -7,9 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { ProducatType } from '../enums/products.enum';
+import { ProductType } from '../enums/products.enum';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
+import { ProductStatus } from '../enums/product.status';
 
 @Entity()
 export class Products {
@@ -21,18 +23,25 @@ export class Products {
 
   @Column({
     type: 'enum',
-    enum: ProducatType,
-    default: ProducatType.PERISHABLE,
+    enum: ProductType,
+    default: ProductType.OTHER,
   })
-  type: ProducatType;
+  type: ProductType;
+
+  @Column({
+    type: 'enum',
+    enum: ProductStatus,
+    default: ProductStatus.REQUESTED,
+  })
+  status: ProductStatus;
 
   @Column({ type: 'int', default: 0 })
   quantity: number;
 
-  @Column({ nullable: true })
-  weight: string;
-
-  @Column({ nullable: true })
+  @Column({  type: 'decimal', precision: 10, scale: 2, default: 0 })
+  weight: number;
+ 
+  @Column({ type: 'varchar', length: 255, nullable: true })
   description: string;
 
   @ManyToOne(() => User, (user) => user)
