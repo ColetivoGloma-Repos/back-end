@@ -18,8 +18,9 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateUserDto } from '../auth/dto/auth.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SearchProduct } from './dto/search-product';
+import { CreateProductDonate } from './dto/create-product-donate';
 
 @ApiTags('Products')
 @Controller('product')
@@ -28,6 +29,7 @@ export class ProductController {
 
   @Post('/')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @ApiBearerAuth()
   @Roles('coordinator', 'user')
   async create(
     @CurrentUser() currentUser: CreateUserDto,
@@ -38,7 +40,8 @@ export class ProductController {
 
   @Patch('/:productId')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('coordinator', 'user')
+  @ApiBearerAuth()
+  @Roles('coordinator', 'user') 
   async update(
     @Param('productId') productId: string,
     @Body() updateProduct: UpdateProduct,
@@ -65,5 +68,16 @@ export class ProductController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('productId') productId: string) {
     return await this.productsService.delete(productId);
+  }
+
+  @Post('/donate')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @ApiBearerAuth()
+  @Roles('coordinator', 'user')
+  async donate(
+    @CurrentUser() currentUser: CreateUserDto,
+    @Body() createProduct: CreateProductDonate,
+  ) {
+    return await this.productsService.donor(createProduct, currentUser);
   }
 }

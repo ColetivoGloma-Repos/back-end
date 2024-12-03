@@ -1,6 +1,7 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
-import { ProducatType } from '../enums/products.enum';
+import { IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { ProductType } from '../enums/products.enum';
+import { Type } from 'class-transformer';
 
 export class UpdateProduct {
   @ApiProperty()
@@ -11,7 +12,7 @@ export class UpdateProduct {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  type: ProducatType;
+  type: ProductType;
 
   @ApiProperty()
   @IsNumber()
@@ -19,9 +20,11 @@ export class UpdateProduct {
   quantity: number;
 
   @ApiProperty()
-  @IsString()
   @IsOptional()
-  weight: string;
+  @IsPositive()
+  @Type(() => Number)
+  weight: number;
+
 
   @ApiProperty()
   @IsString()
