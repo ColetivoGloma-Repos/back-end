@@ -13,6 +13,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { StatusDistributionPoint } from '../enums/distribuition-point.enum';
 
 @Entity()
 export class DistribuitionPoints {
@@ -41,6 +42,9 @@ export class DistribuitionPoints {
   })
   @JoinColumn()
   products: Products[];
+
+  @Column({ type: 'enum', enum: StatusDistributionPoint, default: StatusDistributionPoint.PENDING })
+  status: StatusDistributionPoint
 
   @CreateDateColumn()
   createdAt: Date;

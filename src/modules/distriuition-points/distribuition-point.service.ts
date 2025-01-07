@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +22,7 @@ import { SearchDistribuitionPoin } from './dto/search-distribuition-point';
 import { Paginate } from 'src/common/interface';
 import { ProductType } from '../products/enums/products.enum';
 import { ProductStatus } from '../products/enums/product.status';
+import { StatusDistributionPoint } from './enums/distribuition-point.enum';
 
 @Injectable()
 export class DistribuitionPointsService {
@@ -34,7 +37,7 @@ export class DistribuitionPointsService {
     private productsRepository: Repository<Products>,
     @Inject(forwardRef(() => ProductService))
     private productService: ProductService,
-  ) {}
+  ) { }
 
   public async create(
     createDistribuitionPoin: CreateDistribuitionPoin,
@@ -220,23 +223,23 @@ export class DistribuitionPointsService {
     const totalProducts = await this.totalWeight(distributionPointId);
     // Obtém a quantidade total dos produtos no ponto de distribuição
     const totalQuantityProduct = await this.totalProducts(distributionPointId);
-    
+
     //converte o enum para um array, assim pode pesquisar
     const productTypesArray = Object.values(ProductType);
 
     //retira os alimentos, para que não crie confusão
     const productTypesArrayUpdate = productTypesArray.filter(
       p => p !== ProductType.PERISHABLE && p !== ProductType.NON_PERISHABLE
-    );   
-    
+    );
+
     //função responsável por acionar a função de pesquisa de product.
     const productsCount = productTypesArrayUpdate.map(async (t) => {
       return this.countProductsByType(t, distributionPointId, status)
     })
 
-  
+
     //Através do paralelismo, chama a função que chama a função de conta, evitando sobrecarga no sistema. 
-    const productResult = await Promise.all(productsCount);     
+    const productResult = await Promise.all(productsCount);
     const products = productResult.flat();
 
     //Muda para array de produtor perecíveis e não perecíveis
@@ -248,9 +251,9 @@ export class DistribuitionPointsService {
       return this.countProductsFood(t, distributionPointId)
     })
     //chama como o paralelismo
-    const productFoodResult = await Promise.all(productsFoodCount);     
+    const productFoodResult = await Promise.all(productsFoodCount);
     const productsFood = productFoodResult.flat();
-    
+
     return {
       totalProducts: totalProducts.totalWeight || 0,
       totalQuantityProducts: totalQuantityProduct.totalQuantity || 0,
@@ -258,18 +261,18 @@ export class DistribuitionPointsService {
       productsFood
     };
   }
-  
-  private async countProductsByType(type: ProductType, distributionPointId: string, status: ProductStatus): Promise<any>{
-    
+
+  private async countProductsByType(type: ProductType, distributionPointId: string, status: ProductStatus): Promise<any> {
+
     const count = await this.productsRepository
-    .createQueryBuilder('products')
-    .select('SUM(products.quantity)', 'totalQuantity')
-    .where('products.distribuitionPoint = :distributionPointId AND products.type = :type', {
-      distributionPointId,
-      type: type,
-    })
-    .andWhere('products.status != :status', { status: status }) 
-    .getRawOne();
+      .createQueryBuilder('products')
+      .select('SUM(products.quantity)', 'totalQuantity')
+      .where('products.distribuitionPoint = :distributionPointId AND products.type = :type', {
+        distributionPointId,
+        type: type,
+      })
+      .andWhere('products.status != :status', { status: status })
+      .getRawOne();
 
     interface IProduct {
       name: string;
@@ -282,17 +285,17 @@ export class DistribuitionPointsService {
     return product
   }
 
-  private async countProductsFood(type: ProductType, distributionPointId: string): Promise<any>{
-    
+  private async countProductsFood(type: ProductType, distributionPointId: string): Promise<any> {
+
     const count = await this.productsRepository
-    .createQueryBuilder('products')
-    .select('SUM(products.quantity)', 'totalQuantity')
-    .addSelect('SUM(products.weight)', 'totalWeight')
-    .where('products.distribuitionPoint = :distributionPointId AND products.type = :type', {
+      .createQueryBuilder('products')
+      .select('SUM(products.quantity)', 'totalQuantity')
+      .addSelect('SUM(products.weight)', 'totalWeight')
+      .where('products.distribuitionPoint = :distributionPointId AND products.type = :type', {
         distributionPointId,
         type: type,
-    })
-    .getRawOne();
+      })
+      .getRawOne();
 
     interface IProduct {
       name: string;
@@ -307,19 +310,46 @@ export class DistribuitionPointsService {
     return product
   }
 
-  private async totalWeight(distributionPointId: string){
+  private async totalWeight(distributionPointId: string) {
     return await this.productsRepository
-    .createQueryBuilder('products')
-    .select('SUM(products.weight)', 'totalWeight')
-    .where('products.distribuitionPoint = :distributionPointId', { distributionPointId })
-    .getRawOne();
+      .createQueryBuilder('products')
+      .select('SUM(products.weight)', 'totalWeight')
+      .where('products.distribuitionPoint = :distributionPointId', { distributionPointId })
+      .getRawOne();
   }
 
-  private async totalProducts(distributionPointId: string){
+  private async totalProducts(distributionPointId: string) {
     return await this.productsRepository
-    .createQueryBuilder('products')
-    .select('SUM(products.quantity)', 'totalQuantity')
-    .where('products.distribuitionPoint = :distributionPointId', { distributionPointId })
-    .getRawOne();
+      .createQueryBuilder('products')
+      .select('SUM(products.quantity)', 'totalQuantity')
+      .where('products.distribuitionPoint = :distributionPointId', { distributionPointId })
+      .getRawOne();
+  }
+  async changeStatus(id: string, status: StatusDistributionPoint, currentUser: CreateUserDto) {
+    try {
+      if (!currentUser.isCoordinator) {
+        throw new UnauthorizedException("Usuário sem permissão.");
+      }
+
+      if (!Object.values(StatusDistributionPoint).includes(status)) {
+        throw new BadRequestException('Status inválido');
+      }
+
+
+      const distributionPoint = await this.findOne(id);
+      if (!distributionPoint) {
+        throw new BadRequestException('Ponto de distribuição não encontrado');
+      }
+
+      distributionPoint.status = status;
+
+      await this.distribuitionPointsRepository.save(distributionPoint);
+
+      return { "message": distributionPoint.status };
+
+    } catch (error) {
+      console.error(error);
+      throw new Error(error.message || 'Erro desconhecido');
+    }
   }
 }
