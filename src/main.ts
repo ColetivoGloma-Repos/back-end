@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { corsOptions } from './config/cors.options';
 import * as fs from 'fs';
@@ -10,7 +10,6 @@ import { EnvConfig } from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: corsOptions });
-  app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
     .setTitle('Coletivo Gloma - API')
@@ -20,16 +19,33 @@ async function bootstrap() {
     .addTag('Auth')
     .addTag('Shelter')
     .addTag('Hello World')
-    .addTag('Distribution points')
-    .addTag('Products')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-
-  SwaggerModule.setup('api/document', app, document);
+  SwaggerModule.setup('api', app, document);
   appConfig(app);
-  
-  await app.listen(8080);
- 
-}
 
+  if (EnvConfig.ENV === 'development') return app.listen(8080);
+
+  const certPath = './certificados/certificado.crt';
+  const keyPath = './certificados/chave-privada.pem';
+  const cert = fs.readFileSync(certPath);
+  const key = fs.readFileSync(keyPath);
+
+  const httpsOptions = {
+    cert: cert,
+    key: key,
+    passphrase: 'gloma',
+  };
+  const server = https.createServer(
+    httpsOptions,
+    app.getHttpAdapter().getInstance(),
+  );
+  server.listen(443);
+  http
+    .createServer((req, res) => {
+      res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
+      res.end();
+    })
+    .listen(80);
+}
 bootstrap();
