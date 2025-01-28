@@ -14,20 +14,14 @@ import { Management } from 'src/modules/management/entities/management.entity';
 export const dataSourceConfig = (): DataSourceOptions => {
   return {
     type: 'postgres',
-    ...(EnvConfig.ENV != 'production'
-      ? {
-          url: EnvConfig.database.URL,
-          synchronize: false,
-        }
-      : {
-          type: 'postgres',
-          host: EnvConfig.database.HOST_DB,
-          port: EnvConfig.database.PORT_DB,
-          username: EnvConfig.database.USER_DB,
-          password: EnvConfig.database.PASSWORD_DB,
-          database: EnvConfig.database.NAME_DB,
-          synchronize: true,
-        }),
+    host: EnvConfig.database.HOST_DB,
+    port: EnvConfig.database.PORT_DB,
+    username: EnvConfig.database.USER_DB,
+    password: EnvConfig.database.PASSWORD_DB,
+    database: EnvConfig.database.NAME_DB,
+    ssl: {
+      rejectUnauthorized: false,
+    },
     entities: [
       User,
       Address,
