@@ -16,8 +16,12 @@ export const dataSourceConfig = (): DataSourceOptions => {
     type: 'postgres',
     ...(EnvConfig.ENV === 'production'
       ? {
-          url: EnvConfig.database.URL,
-          synchronize: false,
+          host: EnvConfig.database.HOST_DB,
+          port: EnvConfig.database.PORT_DB,
+          username: EnvConfig.database.USER_DB,
+          password: EnvConfig.database.PASSWORD_DB,
+          database: EnvConfig.database.NAME_DB,
+          synchronize: true,
           ssl: {
             rejectUnauthorized: false,
           },

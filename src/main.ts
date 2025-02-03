@@ -31,36 +31,13 @@ async function bootstrap() {
   if (EnvConfig.ENV !== "production") {
     await app.listen(8080);
   } else {
-      const certPath = './certificados/certificado.crt';
-      const keyPath = './certificados/chave-privada.pem';
+    await app.init();
 
-      console.log(`Loading certificates from ${certPath} and ${keyPath}`);
-      const cert = fs.readFileSync(certPath);
-      const key = fs.readFileSync(keyPath);
+    app.listen(8080, () => {
+      console.log('Server is running on http://localhost:8080');
+    });
 
-      const httpsOptions = {
-        cert: cert,
-        key: key,
-        passphrase: 'gloma',
-      };
-
-      const httpsServer = https.createServer(
-        httpsOptions,
-        app.getHttpAdapter().getInstance(),
-      );
-
-      await app.init();
-
-      httpsServer.listen(443, () => {
-      });
-
-      http.createServer((req, res) => {
-        res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
-        res.end();
-      }).listen(80, () => {
-      });
-
-      app.enableCors(corsOptions);
+    app.enableCors(corsOptions);
     
   }
 }
