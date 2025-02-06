@@ -2,9 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { corsOptions } from './config/cors.options';
-import * as fs from 'fs';
-import * as https from 'https';
-import * as http from 'http';
 import { appConfig } from './config/app.config';
 import { EnvConfig } from './config';
 
@@ -28,7 +25,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/document', app, document);
   appConfig(app);
 
-  if (EnvConfig.ENV !== "production") {
+  if (EnvConfig.ENV !== 'production') {
     await app.listen(8080);
   } else {
     await app.init();
@@ -38,7 +35,6 @@ async function bootstrap() {
     });
 
     app.enableCors(corsOptions);
-    
   }
 }
 
