@@ -39,10 +39,10 @@ export class User {
   @JoinColumn()
   address: Address;
 
-  @Column()
+  @Column({ nullable: true })
   phone: string;
 
-  @Column()
+  @Column({ nullable: true })
   birthDate: string;
 
   @Column()
