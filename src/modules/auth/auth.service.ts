@@ -50,7 +50,6 @@ export class AuthService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    // Remover a senha do objeto do usuário antes de retorná-lo
     const result = { ...user };
     delete result.password;
     return result;
