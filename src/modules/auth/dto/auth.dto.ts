@@ -6,18 +6,13 @@ import {
   IsEmail,
   IsEmpty,
   IsEnum,
-  IsIn,
   IsOptional,
   IsString,
   MinLength,
 } from 'class-validator';
 import { CreateAddressDto } from './adress.dto';
-import { Type } from 'class-transformer';
-export enum Status {
-  WAITING = 'waiting',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-}
+import { EAuthRoles, Status } from '../enums/auth';
+
 export class CreateUserDto {
   @ApiHideProperty()
   @IsEmpty()
@@ -30,11 +25,6 @@ export class CreateUserDto {
   @ApiProperty()
   @IsEmail()
   email: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  username: string;
 
   @ApiProperty()
   @IsString()
@@ -54,16 +44,11 @@ export class CreateUserDto {
   @IsOptional()
   birthDate: string;
 
-  @ApiProperty()
-  @IsBoolean()
-  @IsOptional()
-  isCoordinator: boolean;
-
-  @ApiProperty()
+  @ApiProperty({ enum: EAuthRoles, default: EAuthRoles.USER, isArray: true })
   @IsArray()
   @IsOptional()
-  @IsIn(['coordinator', 'user', 'admin'], { each: true })
-  roles: string[];
+  @IsEnum(EAuthRoles, { each: true })
+  roles: EAuthRoles[];
 
   @ApiProperty({ nullable: true })
   @IsBoolean()

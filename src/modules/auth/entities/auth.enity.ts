@@ -4,7 +4,6 @@ import {
   PrimaryGeneratedColumn,
   JoinColumn,
   OneToOne,
-  ManyToOne,
   ManyToMany,
   OneToMany,
 } from 'typeorm';
@@ -12,12 +11,8 @@ import { Address } from '../entities/adress.enity';
 import { NeedVolunteers } from 'src/modules/need/entities/needVolunteers.entity';
 import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
+import { EAuthRoles, Status } from '../enums/auth';
 
-export enum Status {
-  WAITING = 'waiting',
-  APPROVED = 'approved',
-  REJECTED = 'rejected',
-}
 @Entity()
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -25,9 +20,6 @@ export class User {
 
   @Column()
   name: string;
-
-  @Column()
-  username: string;
 
   @Column()
   email: string;
@@ -45,11 +37,13 @@ export class User {
   @Column({ nullable: true })
   birthDate: string;
 
-  @Column()
-  isCoordinator: boolean;
-
-  @Column('simple-array')
-  roles: string[];
+  @Column({
+    type: 'enum',
+    enum: EAuthRoles,
+    default: [EAuthRoles.USER],
+    array: true,
+  })
+  roles: EAuthRoles[];
 
   @Column({ nullable: true })
   hasVehicle: boolean;
