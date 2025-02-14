@@ -27,9 +27,6 @@ export class User {
   name: string;
 
   @Column()
-  username: string;
-
-  @Column()
   email: string;
 
   @Column()
@@ -45,7 +42,7 @@ export class User {
   @Column({ nullable: true })
   birthDate: string;
 
-  @Column()
+  @Column({ nullable: true, default: false })
   isCoordinator: boolean;
 
   @Column('simple-array')

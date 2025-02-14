@@ -33,11 +33,6 @@ export class CreateUserDto {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
-  username: string;
-
-  @ApiProperty()
-  @IsString()
   @MinLength(8)
   password: string;
 

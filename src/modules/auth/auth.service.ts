@@ -34,7 +34,7 @@ export class AuthService {
       where: { id: payload.sub },
     });
 
-    if (!user || user.username !== payload.username) {
+    if (!user || user.email !== payload.email) {
       throw new UnauthorizedException();
     }
     return user;
@@ -58,10 +58,7 @@ export class AuthService {
   public async register(createUserDto: CreateUserDto) {
     try {
       const existingUser = await this.usersRepository.findOne({
-        where: [
-          { username: createUserDto.username },
-          { email: createUserDto.email },
-        ],
+        where: [{ email: createUserDto.email }, { email: createUserDto.email }],
       });
 
       if (existingUser) {
@@ -71,24 +68,18 @@ export class AuthService {
       const user = new User();
       Object.assign(user, createUserDto);
 
+      user.roles = ['user'];
+
       const salt = await genSalt();
 
       user.password = await hash(createUserDto.password, salt);
-
-      user.roles = [];
-
-      if (user.isCoordinator) {
-        user.roles.push('coordinator');
-      } else {
-        user.roles = ['user'];
-      }
 
       user.code = generateRandomCode(6);
 
       const newUser = await this.usersRepository.save(user);
 
       const payload = {
-        username: newUser.username,
+        email: newUser.email,
         sub: newUser.id,
         roles: newUser.roles,
       };
@@ -253,7 +244,7 @@ export class AuthService {
       }
 
       const payload = {
-        username: company.tradeName,
+        email: company.email,
         sub: company.id,
         roles: ['donor', 'company'],
       };
@@ -269,7 +260,7 @@ export class AuthService {
     }
 
     const payload = {
-      username: user.username,
+      email: user.email,
       sub: user.id,
       roles: user.roles,
     };
@@ -295,7 +286,7 @@ export class AuthService {
       .select([
         'user.id',
         'user.name',
-        'user.username',
+        'user.email',
         'user.phone',
         'user.birthDate',
         'user.isCoordinator',
