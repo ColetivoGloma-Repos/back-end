@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Status, User } from './entities/auth.enity';
+import { User } from './entities/auth.enity';
 import { hash, compare, genSalt } from 'bcrypt';
 import { Address } from './entities/adress.enity';
 import { CreateUserDto } from './dto/auth.dto';
@@ -19,6 +19,7 @@ import { CompanyService } from '../company/company.service';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
+import { Status } from './enums/auth';
 
 @Injectable()
 export class AuthService {
@@ -34,7 +35,7 @@ export class AuthService {
       where: { id: payload.sub },
     });
 
-    if (!user || user.username !== payload.username) {
+    if (!user || user.email !== payload.email) {
       throw new UnauthorizedException();
     }
     return user;
@@ -58,14 +59,11 @@ export class AuthService {
   public async register(createUserDto: CreateUserDto) {
     try {
       const existingUser = await this.usersRepository.findOne({
-        where: [
-          { username: createUserDto.username },
-          { email: createUserDto.email },
-        ],
+        where: [{ email: createUserDto.email }],
       });
 
       if (existingUser) {
-        throw new ConflictException('Nome de usuário ou Email já está em uso');
+        throw new ConflictException('Email já está em uso');
       }
 
       const user = new User();
@@ -75,20 +73,12 @@ export class AuthService {
 
       user.password = await hash(createUserDto.password, salt);
 
-      user.roles = [];
-
-      if (user.isCoordinator) {
-        user.roles.push('coordinator');
-      } else {
-        user.roles = ['user'];
-      }
-
       user.code = generateRandomCode(6);
 
       const newUser = await this.usersRepository.save(user);
 
       const payload = {
-        username: newUser.username,
+        email: newUser.email,
         sub: newUser.id,
         roles: newUser.roles,
       };
@@ -253,7 +243,7 @@ export class AuthService {
       }
 
       const payload = {
-        username: company.tradeName,
+        email: company.email,
         sub: company.id,
         roles: ['donor', 'company'],
       };
@@ -269,7 +259,7 @@ export class AuthService {
     }
 
     const payload = {
-      username: user.username,
+      email: user.email,
       sub: user.id,
       roles: user.roles,
     };
@@ -295,14 +285,14 @@ export class AuthService {
       .select([
         'user.id',
         'user.name',
-        'user.username',
+        'user.email',
         'user.phone',
         'user.birthDate',
         'user.isCoordinator',
         'user.roles',
         'user.status',
-      ]) // Select only the fields you want to return
-      .addSelect(['address.latitude', 'address.longitude']) // Select only the fields you want from the address
+      ])
+      .addSelect(['address.latitude', 'address.longitude'])
       .leftJoin('user.address', 'address')
       .where(
         `6371 * acos(cos(radians(:userLatitude)) * cos(radians(address.latitude)) * cos(radians(address.longitude) - radians(:userLongitude)) + sin(radians(:userLatitude)) * sin(radians(address.latitude))) < :radius`,
