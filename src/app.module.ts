@@ -13,6 +13,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SearchModule } from './modules/search/search.module';
 import { ManagementModule } from './modules/management/management.module';
+import { UserDashboard } from './modules/user-dashboard/user-dashboard.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ManagementModule } from './modules/management/management.module';
     }),
     SearchModule,
     ManagementModule,
+    UserDashboard
   ],
   controllers: [AppController],
   providers: [AppService],
