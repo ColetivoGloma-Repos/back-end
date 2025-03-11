@@ -14,7 +14,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { StatusDistributionPoint } from '../enums/distribuition-point.enum';
-
+import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 @Entity()
 export class DistribuitionPoints {
   @PrimaryGeneratedColumn('uuid')
@@ -54,4 +54,8 @@ export class DistribuitionPoints {
 
   @DeleteDateColumn()
   deletedAt: Date;
+
+  @OneToMany(() => FileUploadEntity, file => file.distribuitionPoint)
+  files: FileUploadEntity[];
+
 }

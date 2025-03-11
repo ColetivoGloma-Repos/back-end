@@ -95,7 +95,8 @@ export class DistribuitionPointsService {
   ): Promise<Paginate<DistribuitionPoints>> {
     const queryBuilder = this.distribuitionPointsRepository
       .createQueryBuilder('dp')
-      .leftJoinAndSelect('dp.address', 'address');
+      .leftJoinAndSelect('dp.address', 'address')
+      .leftJoinAndSelect('dp.files', 'files')
 
     if (query.search) {
       const formattedSearch = `%${query.search.toLowerCase().trim()}%`;
