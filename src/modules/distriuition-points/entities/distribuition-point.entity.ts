@@ -1,7 +1,6 @@
 import { Address } from 'src/modules/auth/entities/adress.enity';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { Products } from 'src/modules/products/entities/product.entity';
-import { FileEntity } from 'src/modules/upload/entities/file.entity'; 
 import {
   Column,
   CreateDateColumn,
@@ -15,7 +14,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { StatusDistributionPoint } from '../enums/distribuition-point.enum';
-
+import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 @Entity()
 export class DistribuitionPoints {
   @PrimaryGeneratedColumn('uuid')
@@ -29,9 +28,6 @@ export class DistribuitionPoints {
 
   @Column({ nullable: true })
   description: string;
-
-  @OneToMany(() => FileEntity, file => file.distribuitionPoint)
-  files: FileEntity[];
 
   @OneToOne(() => Address, (address) => address)
   @JoinColumn()
@@ -48,7 +44,7 @@ export class DistribuitionPoints {
   products: Products[];
 
   @Column({ type: 'enum', enum: StatusDistributionPoint, default: StatusDistributionPoint.PENDING })
-  status: StatusDistributionPoint;
+  status: StatusDistributionPoint
 
   @CreateDateColumn()
   createdAt: Date;
@@ -58,4 +54,8 @@ export class DistribuitionPoints {
 
   @DeleteDateColumn()
   deletedAt: Date;
+
+  @OneToMany(() => FileUploadEntity, file => file.distribuitionPoint)
+  files: FileUploadEntity[];
+
 }

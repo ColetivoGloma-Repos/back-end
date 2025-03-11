@@ -12,7 +12,7 @@ import { NeedVolunteers } from 'src/modules/need/entities/needVolunteers.entity'
 import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { EAuthRoles, Status } from '../enums/auth';
-import { FileEntity } from 'src/modules/upload/entities/file.entity';
+import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 
 
 @Entity()
@@ -83,7 +83,6 @@ export class User {
   })
   myShelters: Shelter[];
 
-  @OneToMany(() => FileEntity, file => file.user)
-
-  files: FileEntity[];
+  @OneToMany(() => FileUploadEntity, file => file.user)
+  files: FileUploadEntity[];
 }

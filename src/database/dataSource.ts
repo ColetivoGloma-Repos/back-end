@@ -10,7 +10,7 @@ import { EnvConfig } from 'src/config';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { Products } from 'src/modules/products/entities/product.entity';
 import { Management } from 'src/modules/management/entities/management.entity';
-import { UploadModule } from 'src/modules/upload/upload.module';
+import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 
 export const dataSourceConfig = (): DataSourceOptions => {
   return {
@@ -48,6 +48,7 @@ export const dataSourceConfig = (): DataSourceOptions => {
       NeedVolunteers,
       Company,
       FileEntity,
+      FileUploadEntity,
       Management,
     ],
   };

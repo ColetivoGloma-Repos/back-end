@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FileEntity } from './entities/file.entity';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { FileUploadEntity } from './entities/file.entity';
+import { S3Client } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
+import { Readable } from 'stream';
 
 dotenv.config();
 
@@ -16,8 +18,8 @@ export class UploadService {
   private bucket: string;
 
   constructor(
-    @InjectRepository(FileEntity)
-    private readonly fileRepository: Repository<FileEntity>,
+    @InjectRepository(FileUploadEntity)
+    private readonly fileRepository: Repository<FileUploadEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(DistribuitionPoints)
@@ -35,7 +37,7 @@ export class UploadService {
     this.bucket = process.env.SPACES_BUCKET;
   }
 
-  async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileEntity> {
+  async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileUploadEntity> {
     let item;
     if (itemType === 'user') {
       item = await this.userRepository.findOneBy({ id: itemId });
@@ -53,22 +55,29 @@ export class UploadService {
 
     const fileKey = `uploads/${uuidv4()}-${file.originalname}`;
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: fileKey,
-      Body: file.buffer,
-      ACL: 'public-read',
-      ContentType: file.mimetype,
+    const stream = new Readable();
+    stream.push(file.buffer);
+    stream.push(null);
+
+    const upload = new Upload({
+      client: this.s3,
+      params: {
+        Bucket: this.bucket,
+        Key: fileKey,
+        Body: stream,
+        ACL: 'public-read',
+        ContentType: file.mimetype,
+      },
     });
 
-    await this.s3.send(command);
+    await upload.done();
 
     const fileUrl = `${process.env.SPACES_ENDPOINT}/${this.bucket}/${fileKey}`;
 
     const newFile = this.fileRepository.create({
       filename: file.originalname,
       url: fileUrl,
-      ref: file.filename,
+      ref: fileKey,
       type: file.mimetype,
       [itemType]: item, 
     });
@@ -76,7 +85,7 @@ export class UploadService {
     return this.fileRepository.save(newFile);
   }
 
-  async getFiles(): Promise<FileEntity[]> {
+  async getFiles(): Promise<FileUploadEntity[]> {
     return this.fileRepository.find();
   }
 }
