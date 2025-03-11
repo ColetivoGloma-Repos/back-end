@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
-import { User } from 'src/modules/auth/entities/auth.enity'; 
+import { User } from 'src/modules/auth/entities/auth.enity';
 import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
+
 @Entity('files')
 export class FileEntity {
   @PrimaryGeneratedColumn('uuid')

@@ -10,10 +10,10 @@ export class UploadController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: Express.Multer.File,
-    @Body('userId') userId: string,
-    @Body('distributionPointId') distributionPointId?: string,
+    @Body('itemType') itemType: string,
+    @Body('itemId') itemId: string,
   ) {
-    const savedFile = await this.filesService.uploadFile(file, userId, distributionPointId);
+    const savedFile = await this.filesService.uploadFile(file, itemType, itemId);
     return { id: savedFile.id, url: savedFile.url };
   }
 
