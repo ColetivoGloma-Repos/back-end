@@ -14,7 +14,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { StatusDistributionPoint } from '../enums/distribuition-point.enum';
-
+import { FileEntity } from 'src/modules/company/entities/file.entity';
 @Entity()
 export class DistribuitionPoints {
   @PrimaryGeneratedColumn('uuid')
@@ -28,6 +28,9 @@ export class DistribuitionPoints {
 
   @Column({ nullable: true })
   description: string;
+
+  @OneToMany(() => FileEntity, file => file.distribuitionPoint)
+  files: FileEntity[];
 
   @OneToOne(() => Address, (address) => address)
   @JoinColumn()

@@ -9,7 +9,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Injectable()
-export class FilesService {
+export class UploadService {
   private s3: S3Client;
   private bucket: string;
 
@@ -29,7 +29,7 @@ export class FilesService {
     this.bucket = process.env.SPACES_BUCKET;
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<FileEntity> {
+  async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileEntity> {
     const fileKey = `uploads/${uuidv4()}-${file.originalname}`;
 
     const command = new PutObjectCommand({
@@ -47,6 +47,10 @@ export class FilesService {
     const newFile = this.fileRepository.create({
       filename: file.originalname,
       url: fileUrl,
+      ref: file.filename,
+      type: file.mimetype,
+      itemType: itemType,
+      itemId: itemId, // Vincular ao ID do item
     });
 
     return this.fileRepository.save(newFile);
