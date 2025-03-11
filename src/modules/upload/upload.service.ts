@@ -38,12 +38,12 @@ export class UploadService {
   async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileEntity> {
     let item;
     if (itemType === 'user') {
-      item = await this.userRepository.findOne(itemId);
+      item = await this.userRepository.findOneBy({ id: itemId });
       if (!item) {
         throw new Error('User not found');
       }
     } else if (itemType === 'distribuitionPoint') {
-      item = await this.distribuitionPointsRepository.findOne(itemId);
+      item = await this.distribuitionPointsRepository.findOneBy({ id: itemId });
       if (!item) {
         throw new Error('Distribuition Point not found');
       }
