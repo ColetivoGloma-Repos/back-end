@@ -25,6 +25,7 @@ import { ResetPasswordDto } from './dto/resetpassword.dto';
 export class AuthController {
   constructor(
     private authService: AuthService,
+    // private mailService: MailService,
   ) {}
 
   @Post('register')

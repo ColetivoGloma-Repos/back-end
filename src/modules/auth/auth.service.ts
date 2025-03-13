@@ -44,40 +44,16 @@ export class AuthService {
   public async getProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['address', 'files'],
+      relations: ['address'],
     });
-  
+
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
-  
-    let fileUrl = null;
-    if (user.files && user.files.length > 0) {
-      const latestFile = user.files[user.files.length - 1];
-      user.files = [latestFile];
-      fileUrl = latestFile.url;
-    }
-  
+
     const result = { ...user };
     delete result.password;
-
-    return {
-      status: 200,
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        birthDate: user.birthDate,
-        roles: user.roles,
-        hasVehicle: user.hasVehicle,
-        vehicleType: user.vehicleType,
-        status: user.status,
-        code: user.code,
-        address: user.address,
-        url: fileUrl,
-      },
-    };
+    return result;
   }
 
   public async register(createUserDto: CreateUserDto) {
