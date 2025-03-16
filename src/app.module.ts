@@ -14,6 +14,7 @@ import { join } from 'path';
 import { SearchModule } from './modules/search/search.module';
 import { ManagementModule } from './modules/management/management.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -22,8 +23,9 @@ import { UploadModule } from './modules/upload/upload.module';
     CompanyModule,
     NeedModule,
     ShelterModule,
+    DashboardModule,
     DistribuitionPointsModule,
-    ProductsModule,     
+    ProductsModule,
     SearchModule,
     UploadModule,
     ServeStaticModule.forRoot({
