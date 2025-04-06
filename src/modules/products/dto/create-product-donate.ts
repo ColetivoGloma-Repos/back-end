@@ -6,8 +6,6 @@ import { ProductStatus } from '../enums/product.status';
 
 export class CreateProductDonate {
 
-
-
   @ApiProperty()
   @IsNumber()
   @IsPositive()
