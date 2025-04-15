@@ -27,11 +27,11 @@ async function bootstrap() {
   appConfig(app);
 
   if (EnvConfig.ENV !== 'production') {
-    await app.listen(8080);
+    await app.listen(80);
   } else {
     await app.init();
 
-    app.listen(8080, () => {
+    app.listen(80, () => {
       console.log('Server is running on http://localhost:8080');
     });
 

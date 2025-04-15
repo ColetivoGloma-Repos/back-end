@@ -231,13 +231,6 @@ export class AuthService {
       updates.password = await hash(updates.password, 10);
     }
 
-    /**
-     * Se o usuário tentar alterar o email, podemos ter emails
-     * repetidos no banco, é bom adicionar uma lógica pra
-     * impedir isso ou só impedir que essa rota seja usada pra
-     * isso, criando uma outra so pro email
-     */
-
     const updatedUser = await this.usersRepository.save({
       ...user,
       ...updates,
