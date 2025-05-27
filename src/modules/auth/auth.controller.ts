@@ -18,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { ApiBearerAuth, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
+import { UpdateUserDto } from './dto/update.dto';
 // import { MailService } from '../mail/mail.service';
 
 @ApiTags('Auth')
@@ -44,8 +45,8 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Patch('update/:userId')
-  async update(@Request() req: any, @Body() updates: CreateUserDto) {
-    return this.authService.updateAccount(req.user.id, updates);
+  async update(@Request() req: any, @Body() updates: UpdateUserDto) {
+     return this.authService.updateAccount(req.user.id, updates);
   }
 
   @ApiBearerAuth()
