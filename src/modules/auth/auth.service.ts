@@ -66,9 +66,6 @@ export class AuthService {
   
     const result = { ...user };
     delete result.password;
-    const data = {
-      
-    }
   
     return {
       status: 200,
