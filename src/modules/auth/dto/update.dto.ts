@@ -31,6 +31,7 @@ export class UpdateUserDto {
   password: string;
 
   @ApiProperty({ type: () => CreateAddressDto })
+  @IsOptional()
   address: CreateAddressDto;
 
   @ApiProperty()

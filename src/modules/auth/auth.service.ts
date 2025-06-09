@@ -66,7 +66,7 @@ export class AuthService {
   
     const result = { ...user };
     delete result.password;
-  
+    
     return {
       status: 200,
       data: {
@@ -246,17 +246,18 @@ export class AuthService {
      */
 
   if (updates.address) {
-    const address = new Address();
-    address.pais = 'Brazil';
-    Object.assign(address, updates.address);
-    const newAddress = await geoResult(address);
-    const saveAddress = await this.addressRepository.save(newAddress);
-    
-    user.address = saveAddress;  
-    delete updates.address;    
+  const address = new Address();
+  address.pais = 'Brazil';
+  Object.assign(address, updates.address);
+  const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(newAddress);
+
+  user.address = saveAddress;
   }
 
-  Object.assign(user, updates); 
+    const { address, ...rest } = updates;
+    Object.assign(user, rest);
+
 
 
   const updatedUser = await this.usersRepository.save(user);

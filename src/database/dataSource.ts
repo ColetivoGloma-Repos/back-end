@@ -35,9 +35,7 @@ export const dataSourceConfig = (): DataSourceOptions => {
           database: EnvConfig.database.NAME_DB,
           synchronize: true,
           ssl: false,
-         /*ssl: {
-            rejectUnauthorized: false,
-          },*/
+         
         }),
     entities: [
       User,
