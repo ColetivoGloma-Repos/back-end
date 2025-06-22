@@ -7,12 +7,15 @@ import { ChangeCoordinatorStatusDto } from "./dto/ChangeCoordinatorStatusDto";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { ShelterService } from "../shelter/shelter.service";
+import { SearchShelter } from "../shelter/dto/search-shelter";
 
 @ApiTags('Dashboard')
 @Controller('/dashboard')
 export class DashboardController {
     constructor(
-        private dashboardService: DashboardService
+        private dashboardService: DashboardService,
+        private shelterService: ShelterService
     ){}
 
     @ApiBearerAuth()
@@ -32,4 +35,20 @@ export class DashboardController {
         return { message:  `O coordenador foi alterado para o status: ${status}`}
     }
 
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard) 
+    @Roles('admin')
+    @Patch('/admin/data')
+    async data() {        
+        return { message:  `O coordenador foi alterado para o status.`}
+    }
+
+
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard) 
+    @Roles('admin')
+    @Get('/shelters')        
+    async shelters(@Query() query: SearchShelter) {
+        return this.shelterService.listAll(query)        
+    }
 }
