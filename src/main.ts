@@ -32,7 +32,7 @@ async function bootstrap() {
     await app.init();
 
     app.listen(80, () => {
-      console.log('Server is running on http://localhost:8080');
+      console.log('Server is running on http://localhost:80');
     });
 
     app.enableCors(corsOptions);

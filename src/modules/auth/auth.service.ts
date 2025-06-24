@@ -236,6 +236,7 @@ export class AuthService {
       ...updates,
     });
 
+    console.log(updatedUser, 'user')
     delete updatedUser.password;
 
     return updatedUser;
