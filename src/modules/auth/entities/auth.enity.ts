@@ -29,9 +29,10 @@ export class User {
   @Column()
   password: string;
 
-  @OneToOne(() => Address)
+  @OneToOne(() => Address, { nullable: true })
   @JoinColumn()
   address: Address;
+
 
   @Column({ nullable: true })
   phone: string;

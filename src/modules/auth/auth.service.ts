@@ -20,12 +20,17 @@ import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { Status } from './enums/auth';
+import { UpdateUserDto } from './dto/update.dto';
+import { geoResult } from '../company/utils/geoResult';
+
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Address)
+    private addressRepository: Repository<Address>,
     private jwtService: JwtService,
     private companyService: CompanyService,
   ) {}
@@ -47,6 +52,7 @@ export class AuthService {
       relations: ['address', 'files'],
     });
   
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -60,7 +66,7 @@ export class AuthService {
   
     const result = { ...user };
     delete result.password;
-
+    
     return {
       status: 200,
       data: {
@@ -76,6 +82,7 @@ export class AuthService {
         code: user.code,
         address: user.address,
         url: fileUrl,
+       
       },
     };
   }
@@ -220,9 +227,9 @@ export class AuthService {
     return { message: 'Conta deletada com sucesso' };
   }
 
-  public async updateAccount(userId: string, updates: Partial<User>) {
+  public async updateAccount(userId: string, updates: UpdateUserDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
-
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -230,7 +237,7 @@ export class AuthService {
     if (updates.password) {
       updates.password = await hash(updates.password, 10);
     }
-
+  
     /**
      * Se o usuário tentar alterar o email, podemos ter emails
      * repetidos no banco, é bom adicionar uma lógica pra
@@ -238,14 +245,27 @@ export class AuthService {
      * isso, criando uma outra so pro email
      */
 
-    const updatedUser = await this.usersRepository.save({
-      ...user,
-      ...updates,
-    });
+  if (updates.address) {
+  const address = new Address();
+  address.pais = 'Brazil';
+  Object.assign(address, updates.address);
+  const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(newAddress);
 
-    delete updatedUser.password;
+  user.address = saveAddress;
+  }
 
-    return updatedUser;
+    const { address, ...rest } = updates;
+    Object.assign(user, rest);
+
+
+
+  const updatedUser = await this.usersRepository.save(user);
+
+  delete updatedUser.password;
+
+  return updatedUser;
+
   }
 
   public async authenticate(email: string, password: string) {
