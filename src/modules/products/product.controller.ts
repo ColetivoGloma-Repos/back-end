@@ -67,7 +67,7 @@ export class ProductController {
   @Roles('coordinator', 'user', 'admin')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('productId') productId: string) {
-    return await this.productsService.delete(productId);
+    await this.productsService.delete(productId);
   }
 
   @Post('/donate')

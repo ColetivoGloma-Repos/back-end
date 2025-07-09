@@ -109,7 +109,6 @@ export class ProductService {
     if (!products) {
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     }
-
     return products;
   }
 
@@ -123,15 +122,15 @@ export class ProductService {
 
     if (relations?.distribuitionPoint) {
       queryBuilder
-        .leftJoinAndSelect('product.distribuitionPoint', 'distribuitionPoint')
-        .addSelect(['distribuitionPoint.id']);
+        .leftJoin('product.distributionPoint', 'distributionPoint')
+        .addSelect(['distributionPoint.id']);
     }
     if (relations?.creator) {
       queryBuilder
-        .leftJoinAndSelect('product.creator', 'creator')
+        .leftJoin('product.creator', 'creator')
         .addSelect(['creator.id']);
     }
-
+    
     if (query.search) {
       const formattedSearch = `%${query.search.toLowerCase().trim()}%`;
       queryBuilder.andWhere(
@@ -175,67 +174,73 @@ export class ProductService {
   public async delete(id: string) {
     await this.findOne(id);
     await this.productsRepository.delete(id);
-
-    return {
-      message: ProductMessagesHelper.PRODUCT_DELETED,
-    };
   }
 
 
   async donor(createProduct: CreateProductDonate, currentUser: CreateUserDto) {
     try {
-        const productRequested = await this.productsRepository.findOne({
-          where: { id: createProduct.productReferenceID},
-          relations: ['distribuitionPoint']
-        })
-        const newProduct = new Products();
-        newProduct.distribuitionPoint = productRequested.distribuitionPoint;
-        newProduct.name = productRequested.name;
-        newProduct.type = productRequested.type;
-        newProduct.status = ProductStatus.RECEIVED;
-        newProduct.quantity = createProduct.quantity;
-        newProduct.weight = createProduct.weight;
-
-        const user = await this.usersRepository.findOne({
-            where: { id: currentUser.id },
-        });
-        newProduct.creator = user;
-
-        const totalQuantity = productRequested.quantity - createProduct.quantity;
-
-        if (totalQuantity <= 0) {
-            productRequested.quantity = 0; 
+      // 1. Busca o produto de referência
+      const productRequested = await this.productsRepository.findOne({
+        where: { id: createProduct.productReferenceID },
+        relations: ['distribuitionPoint']
+      });
+  
+      if (!productRequested) {
+        throw new Error('Produto de referência não encontrado');
+      }
+  
+      const donatedQuantity = Number(createProduct.quantity) || 0;
+      let donatedWeight = 0;
+  
+      if (createProduct.weight !== undefined && createProduct.weight !== null) {
+        donatedWeight = parseFloat(createProduct.weight.toString().replace(',', '.'));
+       
+        if (isNaN(donatedWeight)) {
+          donatedWeight = 0;
         } else {
-            productRequested.quantity = totalQuantity;
+          donatedWeight = parseFloat(donatedWeight.toFixed(2));
         }
+      }
+  
+      const newProduct = new Products();
+      newProduct.distribuitionPoint = productRequested.distribuitionPoint;
+      newProduct.name = productRequested.name;
+      newProduct.type = productRequested.type;
+      newProduct.status = ProductStatus.RECEIVED;
+      newProduct.quantity = donatedQuantity;
+      newProduct.weight = donatedWeight; 
 
-        if (productRequested.type === ProductType.PERISHABLE || productRequested.type === ProductType.NON_PERISHABLE) {
-            const totalWeight = productRequested.weight - createProduct.weight;
-            if (totalWeight <= 0) {
-                productRequested.weight = 0.0; 
-            } else {
-                newProduct.weight = totalWeight; 
-            }
-        } else {
-            newProduct.weight = 0;             
-        }
-
-        if (productRequested.quantity > 0) {
-            await this.productsRepository.save(productRequested);
-        } else if(productRequested.weight > 0){
-          await this.productsRepository.save(productRequested);
-        }        
-        else {
-          await this.productsRepository.delete(productRequested.id);
-        }
+      if (productRequested.type === ProductType.PERISHABLE || 
+          productRequested.type === ProductType.NON_PERISHABLE) {
         
-        await this.productsRepository.save(newProduct);
-        return newProduct;
-
+        const currentWeight = parseFloat(productRequested.weight.toString()) || 0;
+        productRequested.weight = parseFloat((currentWeight - donatedWeight).toFixed(2));
+        
+        if (productRequested.weight < 0) {
+          productRequested.weight = 0;
+        }
+      }
+  
+      productRequested.quantity = Math.max(0, productRequested.quantity - donatedQuantity);
+ 
+      const shouldKeepOriginal = productRequested.quantity > 0 || 
+                               (productRequested.weight > 0 && 
+                                (productRequested.type === ProductType.PERISHABLE || 
+                                 productRequested.type === ProductType.NON_PERISHABLE));
+  
+      if (shouldKeepOriginal) {
+        await this.productsRepository.save(productRequested);
+      } else {
+        await this.productsRepository.delete(productRequested.id);
+      }
+  
+      await this.productsRepository.save(newProduct);
+      return newProduct;
+  
     } catch (error) {
-        logger.error(error);
-        throw error;
+      logger.error(error);
+      throw new Error('Erro ao processar doação: ' + error.message);
     }
-}
+  }
 
 }
