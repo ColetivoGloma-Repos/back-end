@@ -81,8 +81,7 @@ export class AuthService {
         status: user.status,
         code: user.code,
         address: user.address,
-        url: fileUrl,
-       
+        url: fileUrl,       
       },
     };
   }
@@ -257,8 +256,6 @@ export class AuthService {
 
     const { address, ...rest } = updates;
     Object.assign(user, rest);
-
-
 
   const updatedUser = await this.usersRepository.save(user);
 
