@@ -66,11 +66,13 @@ export class AuthController {
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
+
   @ApiExcludeEndpoint()
   @Put('activate/:activationCode')
   async activateUser(@Param('activationCode') activationCode: string) {
     return this.authService.activateUser(activationCode);
   }
+  
   @Put('change-password')
   async changePassword(@Body() changePasswordDto: ChangePasswordDto) {
     return this.authService.changePassword(changePasswordDto);

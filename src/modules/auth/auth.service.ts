@@ -269,13 +269,12 @@ export class AuthService {
     const user = await this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
     });
-    //adicionando pesquisa company
+
     const company = await this.companyService.findByEmail(email);
-    //adiciona comparação para validação de e-mail
+
     if (!user && !company) {
       throw new Error('Usuário não encontrado');
     }
-    //Início da lógica do token para a company
     let token = '';
     if (company && !user) {
       const passwordMatchesCompany = await compare(password, company.password);
@@ -291,7 +290,6 @@ export class AuthService {
       token = this.jwtService.sign(payload);
       return { token };
     }
-    //fim da lógica do token para a company
 
     const passwordMatches = await compare(password, user.password);
 
