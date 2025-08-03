@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -19,7 +20,7 @@ import { CompanyService } from '../company/company.service';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
-import { Status } from './enums/auth';
+import { EAuthRoles, Status } from './enums/auth';
 import { UpdateUserDto } from './dto/update.dto';
 import { geoResult } from '../company/utils/geoResult';
 
@@ -265,6 +266,21 @@ export class AuthService {
 
   }
 
+  public async changeUserCategory(userId: string): Promise<void> {
+      const user = await this.getProfile(userId)
+  
+      if (!user || !user.data || !Array.isArray(user.data.roles)) {
+        throw new BadRequestException('Dados inválidos.');
+      }
+      if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+        throw new BadRequestException('Usuário já cadastrado como coordenador.');
+      }
+  
+      user.data.roles.push(EAuthRoles.COORDINATOR)
+
+      await this.usersRepository.save(user.data)
+    }
+
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
@@ -308,6 +324,8 @@ export class AuthService {
 
     return { token };
   }
+  
+
   public async findNearbyUsers(userId: string, radius: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -348,6 +366,8 @@ export class AuthService {
     return await query.getMany();
   }
 }
+
+
 
 function generateRandomCode(length: number): string {
   const characters =
