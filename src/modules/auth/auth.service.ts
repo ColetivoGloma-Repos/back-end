@@ -23,6 +23,7 @@ import { ChangePasswordDto } from './dto/changepassword.dto';
 import { EAuthRoles, Status } from './enums/auth';
 import { UpdateUserDto } from './dto/update.dto';
 import { geoResult } from '../company/utils/geoResult';
+import { Shelter } from '../shelter/entities/shelter.entity';
 
 
 @Injectable()
@@ -34,6 +35,8 @@ export class AuthService {
     private addressRepository: Repository<Address>,
     private jwtService: JwtService,
     private companyService: CompanyService,
+    @InjectRepository(Shelter)
+    private shelterRepository: Repository<Shelter>,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -50,7 +53,7 @@ export class AuthService {
   public async getProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['address', 'files'],
+      relations: ['address', 'files', 'myShelters'],
     });
   
     
@@ -265,21 +268,31 @@ export class AuthService {
   return updatedUser;
 
   }
-
   public async changeUserCategory(userId: string): Promise<void> {
-      const user = await this.getProfile(userId)
-  
-      if (!user || !user.data || !Array.isArray(user.data.roles)) {
-        throw new BadRequestException('Dados inválidos.');
-      }
-      if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+  const user = await this.getProfile(userId);
+
+  if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
+    throw new BadRequestException('Dados inválidos.');
+  }
+
+   const shelters = await this.shelterRepository
+      .createQueryBuilder('shelter')
+      .leftJoin('shelter.coordinators', 'coordinator')
+      .where('coordinator.id = :userId', { userId })
+      .getMany();
+
+    if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+      if (!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) && shelters.length > 0) {
+        user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN);
+      } else {
         throw new BadRequestException('Usuário já cadastrado como coordenador.');
       }
-  
-      user.data.roles.push(EAuthRoles.COORDINATOR)
-
-      await this.usersRepository.save(user.data)
+    } else {
+      user.data.roles.push(EAuthRoles.COORDINATOR);
     }
+
+    await this.usersRepository.save(user.data);
+  }
 
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
