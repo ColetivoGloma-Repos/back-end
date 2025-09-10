@@ -1,8 +1,11 @@
 import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
-import { IsEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { ProducatType } from '../enums/products.enum';
+import { IsDecimal, IsEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { ProductType } from '../enums/products.enum';
+import { Type } from 'class-transformer';
+import { ProductStatus } from '../enums/product.status';
 
 export class CreateProduct {
+
   @ApiHideProperty()
   @IsEmpty()
   id: string;
@@ -14,16 +17,23 @@ export class CreateProduct {
   @ApiProperty()
   @IsString()
   @IsOptional()
-  type: ProducatType;
-
-  @ApiProperty()
-  @IsNumber()
-  @IsOptional()
-  quantity: number;
+  type: ProductType;
 
   @ApiProperty()
   @IsString()
-  weight: string;
+  @IsOptional()
+  status: ProductStatus;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsPositive()
+  quantity: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsPositive()
+  @Type(() => Number)
+  weight: number;
 
   @ApiProperty()
   @IsString()
@@ -32,6 +42,8 @@ export class CreateProduct {
 
   @ApiProperty()
   @IsString()
-  @IsOptional()
-  distribuitionPointId: string;
+  distributionPointId: string;
+
+  
+
 }

@@ -7,19 +7,23 @@ import { UserResponseDTO } from "./userResponseDTO";
 export class ResponseDefaultManagement {
 
   private id: string;
-  private collectionData: Date;
+  private collectionDate: Date;
   private coordinator: UserResponseDTO;
   private shelterName: string;
-  private collectionPoint: ResponseAddressDTO;
+  private shelterId: string;
+  private processed: boolean;
+  private collectPoint: ResponseAddressDTO;
   private needItem?: NeedItem[];
   private needVolunteer?: NeedVolunteers[];
 
   constructor (management: Management){
     this.id = management.id,
-    this.collectionData = management.collectionDate,
+    this.collectionDate = management.collectionDate,
     this.shelterName = management.shelter.name,
+    this.shelterId = management.shelter.id,
+    this.processed = management.processed,
     this.coordinator = new UserResponseDTO(management.coordinator),
-    this.collectionPoint = new ResponseAddressDTO(management.collectPoint),
+    this.collectPoint = new ResponseAddressDTO(management.collectPoint),
     this.needItem = management.needItem,
     this.needVolunteer = management.needVolunteer
   }

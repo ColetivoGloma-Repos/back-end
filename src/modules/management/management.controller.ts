@@ -1,4 +1,4 @@
-import { Get, Post, Patch, Delete, Param, HttpStatus, HttpCode, UseGuards, Body, Controller } from '@nestjs/common';
+import { Get, Post, Patch, Delete, Param, UseGuards, Body, Controller, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateManagementDTO } from './dto/request/createManagementDTO';
@@ -7,6 +7,8 @@ import { ResponseDefaultManagement } from './dto/response/responseDefaultManagem
 
 import { UpdateManagementDTO } from './dto/request/updateManagementDTO';
 import { DeleteManagementDto } from './dto/request/delelteManagementDto';
+import { SearchManagement } from './dto/request/searchManagement';
+import { ResponsePaginateManagement } from './dto/response/responsePaginateManagement';
 
 
 @ApiTags('Management')
@@ -27,12 +29,15 @@ export class ManagementController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async update(@Param('managementId') managementId: string,@Body() updates: UpdateManagementDTO) {
-     return new ResponseDefaultManagement(await this.managementService.update(managementId, updates));
+   
+    return new ResponseDefaultManagement(await this.managementService.update(managementId, updates));
   }
 
   @Get('/find-all')
-  async listAll() {
-    return (await this.managementService.findAll()).map((m) => new ResponseDefaultManagement(m));
+  async listAll(@Query() query: SearchManagement) {
+    const { data, total } = await this.managementService.findAll(query);
+    const response = new ResponsePaginateManagement(data, total);
+    return response;
   }
 
   @Get('/find-all-by-user/:id')

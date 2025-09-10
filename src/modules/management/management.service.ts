@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, InternalServerErrorException, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Brackets, Repository } from "typeorm";
 import { CreateManagementDTO } from "./dto/request/createManagementDTO";
 import { Address } from "../auth/entities/adress.enity";
 import logger from "src/logger";
@@ -13,6 +13,8 @@ import { createValidator } from "./validators/createValidators";
 import { geoResult } from "./utils/geoResult";
 import { needValidator } from "./validators/needValidator";
 import { UpdateManagementDTO } from "./dto/request/updateManagementDTO";
+import { SearchManagement } from "./dto/request/searchManagement";
+import { Paginate } from "src/common/interface";
 
 @Injectable()
 export class ManagementService {
@@ -64,16 +66,17 @@ export class ManagementService {
     if(!management){
       throw new BadRequestException('Demanda não encontrada.')
     }
-
+     
     if (updates.collectPoint) {  
       const address = new Address();
       Object.assign(address, updates.collectPoint);
       const newAddress = await this.addressRepository.create(address);  
       const updatedAddress = await geoResult(newAddress)
       management.collectPoint = updatedAddress;
+      
       await this.addressRepository.save(updatedAddress);
   }
-    return await this.managementRepository.save({...management, ...updates})
+    return await this.managementRepository.save(management)
 
   }
 
@@ -94,12 +97,43 @@ export class ManagementService {
   }
   }
 
-
-  async findAll(): Promise<Management[]>{
+  async findAll(query: SearchManagement):  Promise<Paginate<Management>>{
     try{
-   return await this.managementRepository.find({
-    relations: ['coordinator','collectPoint', 'needItem', 'needVolunteer', 'shelter']
-   });
+      const queryBuilder = this.managementRepository
+      .createQueryBuilder('m')
+      .leftJoinAndSelect('m.coordinator', 'coordinator')
+      .leftJoinAndSelect('m.collectPoint', 'collectPoint')
+      .leftJoinAndSelect('m.needItem', 'needItem')
+      .leftJoinAndSelect('m.needVolunteer', 'needVolunteer')
+      .leftJoinAndSelect('m.shelter', 'shelter');
+   
+      if(query.search){
+        const formattedSearch = `%${query.search.toLowerCase().trim()}%`;
+        queryBuilder.andWhere(
+          new Brackets((qb) => {
+            qb.where('LOWER(shelter.name) LIKE :search', {
+              search: formattedSearch,
+            })
+              .orWhere('LOWER(shelter.description) LIKE :search', {
+                search: formattedSearch,
+              })
+              .orWhere('LOWER(shelter.phone) LIKE :search', {
+                search: formattedSearch,
+              });
+          }),
+        );
+      }
+      const limit = parseInt(query.limit as string, 10) || 10;
+      const offset = parseInt(query.offset as string, 10) || 0;
+  
+      queryBuilder.skip(offset).take(limit);
+  
+      const [data, total] = await queryBuilder.getManyAndCount();
+  
+      return {
+        data,
+        total,
+      };
     } catch (error) {
       logger.error(error);
       throw new InternalServerErrorException('Erro ao realizar a pesquisa.')

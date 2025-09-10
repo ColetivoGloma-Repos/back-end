@@ -13,7 +13,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
+import { StatusDistributionPoint } from '../enums/distribuition-point.enum';
+import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 @Entity()
 export class DistribuitionPoints {
   @PrimaryGeneratedColumn('uuid')
@@ -42,6 +43,9 @@ export class DistribuitionPoints {
   @JoinColumn()
   products: Products[];
 
+  @Column({ type: 'enum', enum: StatusDistributionPoint, default: StatusDistributionPoint.PENDING })
+  status: StatusDistributionPoint
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -50,4 +54,8 @@ export class DistribuitionPoints {
 
   @DeleteDateColumn()
   deletedAt: Date;
+
+  @OneToMany(() => FileUploadEntity, file => file.distribuitionPoint)
+  files: FileUploadEntity[];
+
 }

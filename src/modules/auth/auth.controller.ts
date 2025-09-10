@@ -18,6 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { ApiBearerAuth, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
+import { UpdateUserDto } from './dto/update.dto';
 // import { MailService } from '../mail/mail.service';
 
 @ApiTags('Auth')
@@ -25,7 +26,6 @@ import { ResetPasswordDto } from './dto/resetpassword.dto';
 export class AuthController {
   constructor(
     private authService: AuthService,
-    // private mailService: MailService,
   ) {}
 
   @Post('register')
@@ -45,8 +45,8 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Patch('update/:userId')
-  async update(@Request() req: any, @Body() updates: CreateUserDto) {
-    return this.authService.updateAccount(req.user.id, updates);
+  async update(@Request() req: any, @Body() updates: UpdateUserDto) {
+     return this.authService.updateAccount(req.user.id, updates);
   }
 
   @ApiBearerAuth()
@@ -59,6 +59,12 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.authService.authenticate(loginDto.email, loginDto.password);
+  }
+
+
+  @Post('change-category/:userId')
+  async requerChangeToPassword(@Param('userId') userId: string) {
+    return this.authService.changeUserCategory(userId);
   }
 
   @ApiExcludeEndpoint()

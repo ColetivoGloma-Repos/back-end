@@ -2,9 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { corsOptions } from './config/cors.options';
-import * as fs from 'fs';
-import * as https from 'https';
-import * as http from 'http';
 import { appConfig } from './config/app.config';
 import { EnvConfig } from './config';
 
@@ -22,14 +19,24 @@ async function bootstrap() {
     .addTag('Hello World')
     .addTag('Distribution points')
     .addTag('Products')
+    .addTag('Dashboard')
     .build();
   const document = SwaggerModule.createDocument(app, config);
 
   SwaggerModule.setup('api/document', app, document);
   appConfig(app);
 
-  await app.listen(3000);
- 
+  if (EnvConfig.ENV !== 'production') {
+    await app.listen(8080);
+  } else {
+    await app.init();
+
+    app.listen(8080, () => {
+      console.log('Server is running on http://localhost:8080');
+    });
+
+    app.enableCors(corsOptions);
+  }
 }
 
 bootstrap();

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -7,22 +8,22 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Status, User } from './entities/auth.enity';
+import { User } from './entities/auth.enity';
 import { hash, compare, genSalt } from 'bcrypt';
 import { Address } from './entities/adress.enity';
 import { CreateUserDto } from './dto/auth.dto';
-import * as opencage from 'opencage-api-client';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { EnvConfig } from 'src/config';
 import { JwtPayload } from './payload/jwt.payload';
 import { JwtService } from '@nestjs/jwt';
 import logger from 'src/logger';
 import { CompanyService } from '../company/company.service';
-// import { MailService } from '../mail/mail.service';
-import { SendMailActivationUserDto } from '../mail/dto/sendmailactivationuser.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
+import { EAuthRoles, Status } from './enums/auth';
+import { UpdateUserDto } from './dto/update.dto';
+import { geoResult } from '../company/utils/geoResult';
+
 
 @Injectable()
 export class AuthService {
@@ -33,7 +34,6 @@ export class AuthService {
     private addressRepository: Repository<Address>,
     private jwtService: JwtService,
     private companyService: CompanyService,
-    // private mailService: MailService,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -41,7 +41,7 @@ export class AuthService {
       where: { id: payload.sub },
     });
 
-    if (!user || user.username !== payload.username) {
+    if (!user || user.email !== payload.email) {
       throw new UnauthorizedException();
     }
     return user;
@@ -50,30 +50,51 @@ export class AuthService {
   public async getProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['address'],
+      relations: ['address', 'files'],
     });
-
+  
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
-
-    // Remover a senha do objeto do usuário antes de retorná-lo
+  
+    let fileUrl = null;
+    if (user.files && user.files.length > 0) {
+      const latestFile = user.files[user.files.length - 1];
+      user.files = [latestFile];
+      fileUrl = latestFile.url;
+    }
+  
     const result = { ...user };
     delete result.password;
-    return result;
+    
+    return {
+      status: 200,
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        birthDate: user.birthDate,
+        roles: user.roles,
+        hasVehicle: user.hasVehicle,
+        vehicleType: user.vehicleType,
+        status: user.status,
+        code: user.code,
+        address: user.address,
+        url: fileUrl,       
+      },
+    };
   }
 
   public async register(createUserDto: CreateUserDto) {
     try {
       const existingUser = await this.usersRepository.findOne({
-        where: [
-          { username: createUserDto.username },
-          { email: createUserDto.email },
-        ],
+        where: [{ email: createUserDto.email }],
       });
 
       if (existingUser) {
-        throw new ConflictException('Nome de usuário ou Email já está em uso');
+        throw new ConflictException('Email já está em uso');
       }
 
       const user = new User();
@@ -83,47 +104,12 @@ export class AuthService {
 
       user.password = await hash(createUserDto.password, salt);
 
-      const address = new Address();
-      Object.assign(address, createUserDto.address);
-      const newAddress = await this.addressRepository.save(address);
-
-      user.roles = [];
-
-      if (user.isCoordinator) {
-        user.roles.push('coordinator');
-      } else {
-        user.roles = ['user'];
-      }
-      const addressString = `${newAddress.logradouro}, ${newAddress.numero}, ${newAddress.bairro}, ${newAddress.municipio}, ${newAddress.estado}, ${newAddress.pais}`;
-      const geocodeResult = await opencage.geocode({
-        q: addressString,
-        key: EnvConfig.OPENCAGE.API_KEY,
-      });
-
-      if (geocodeResult.results.length > 0) {
-        const { lat, lng } = geocodeResult.results[0].geometry;
-        newAddress.latitude = lat;
-        newAddress.longitude = lng;
-      }
-
-      const updatedAddress = await this.addressRepository.save(newAddress);
-
-      user.address = updatedAddress;
-      user.address = newAddress;
       user.code = generateRandomCode(6);
 
       const newUser = await this.usersRepository.save(user);
 
-      const mailDto = new SendMailActivationUserDto(
-        newUser.name,
-        newUser.email,
-        newUser.code,
-      );
-
-      // this.mailService.sendUserConfirmation(mailDto)
-
       const payload = {
-        username: newUser.username,
+        email: newUser.email,
         sub: newUser.id,
         roles: newUser.roles,
       };
@@ -241,9 +227,9 @@ export class AuthService {
     return { message: 'Conta deletada com sucesso' };
   }
 
-  public async updateAccount(userId: string, updates: Partial<User>) {
+  public async updateAccount(userId: string, updates: UpdateUserDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
-
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -251,7 +237,7 @@ export class AuthService {
     if (updates.password) {
       updates.password = await hash(updates.password, 10);
     }
-
+  
     /**
      * Se o usuário tentar alterar o email, podemos ter emails
      * repetidos no banco, é bom adicionar uma lógica pra
@@ -259,15 +245,41 @@ export class AuthService {
      * isso, criando uma outra so pro email
      */
 
-    const updatedUser = await this.usersRepository.save({
-      ...user,
-      ...updates,
-    });
+  if (updates.address) {
+  const address = new Address();
+  address.pais = 'Brazil';
+  Object.assign(address, updates.address);
+  const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(newAddress);
 
-    delete updatedUser.password;
-
-    return updatedUser;
+  user.address = saveAddress;
   }
+
+    const { address, ...rest } = updates;
+    Object.assign(user, rest);
+
+  const updatedUser = await this.usersRepository.save(user);
+
+  delete updatedUser.password;
+
+  return updatedUser;
+
+  }
+
+  public async changeUserCategory(userId: string): Promise<void> {
+      const user = await this.getProfile(userId)
+  
+      if (!user || !user.data || !Array.isArray(user.data.roles)) {
+        throw new BadRequestException('Dados inválidos.');
+      }
+      if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+        throw new BadRequestException('Usuário já cadastrado como coordenador.');
+      }
+  
+      user.data.roles.push(EAuthRoles.COORDINATOR)
+
+      await this.usersRepository.save(user.data)
+    }
 
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
@@ -288,7 +300,7 @@ export class AuthService {
       }
 
       const payload = {
-        username: company.tradeName,
+        email: company.email,
         sub: company.id,
         roles: ['donor', 'company'],
       };
@@ -304,7 +316,7 @@ export class AuthService {
     }
 
     const payload = {
-      username: user.username,
+      email: user.email,
       sub: user.id,
       roles: user.roles,
     };
@@ -312,6 +324,8 @@ export class AuthService {
 
     return { token };
   }
+  
+
   public async findNearbyUsers(userId: string, radius: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -330,14 +344,14 @@ export class AuthService {
       .select([
         'user.id',
         'user.name',
-        'user.username',
+        'user.email',
         'user.phone',
         'user.birthDate',
         'user.isCoordinator',
         'user.roles',
         'user.status',
-      ]) // Select only the fields you want to return
-      .addSelect(['address.latitude', 'address.longitude']) // Select only the fields you want from the address
+      ])
+      .addSelect(['address.latitude', 'address.longitude'])
       .leftJoin('user.address', 'address')
       .where(
         `6371 * acos(cos(radians(:userLatitude)) * cos(radians(address.latitude)) * cos(radians(address.longitude) - radians(:userLongitude)) + sin(radians(:userLatitude)) * sin(radians(address.latitude))) < :radius`,
@@ -352,6 +366,8 @@ export class AuthService {
     return await query.getMany();
   }
 }
+
+
 
 function generateRandomCode(length: number): string {
   const characters =
