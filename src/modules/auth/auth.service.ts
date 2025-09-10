@@ -23,6 +23,14 @@ import { SendMailActivationUserDto } from '../mail/dto/sendmailactivationuser.dt
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
+<<<<<<< Updated upstream
+=======
+import { EAuthRoles, Status } from './enums/auth';
+import { UpdateUserDto } from './dto/update.dto';
+import { geoResult } from '../company/utils/geoResult';
+import { ShelterService } from '../shelter/shelter.service';
+
+>>>>>>> Stashed changes
 
 @Injectable()
 export class AuthService {
@@ -33,7 +41,11 @@ export class AuthService {
     private addressRepository: Repository<Address>,
     private jwtService: JwtService,
     private companyService: CompanyService,
+<<<<<<< Updated upstream
     // private mailService: MailService,
+=======
+    private shelterService: ShelterService
+>>>>>>> Stashed changes
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -269,6 +281,26 @@ export class AuthService {
     return updatedUser;
   }
 
+<<<<<<< Updated upstream
+=======
+  public async changeUserCategory(userId: string): Promise<void> {
+      const user = await this.getProfile(userId)
+  
+      if (!user || !user.data || !Array.isArray(user.data.roles)) {
+        throw new BadRequestException('Dados inválidos.');
+      }
+      const shelter =  await this.shelterService.verifyIfCoordinatorHasShelter(userId)
+      if(!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) &&(user.data.roles.includes(EAuthRoles.COORDINATOR)) && shelter) {
+         user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN)
+      } else if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+         throw new BadRequestException("Usuário cadastrado já cadastrado como coordenador.")
+      } else {
+         user.data.roles.push(EAuthRoles.COORDINATOR)
+      }
+      await this.usersRepository.save(user.data)
+   }
+
+>>>>>>> Stashed changes
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
       where: { email: email.toLowerCase() },

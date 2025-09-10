@@ -70,6 +70,9 @@ export class User {
   @Column({ nullable: true })
   code: string;
 
+  @Column({ nullable: false, default: false })
+  isAdminInitiative: boolean;
+
   @ManyToMany(() => Shelter, (shelter) => shelter.coordinators, {
     nullable: true,
   })
