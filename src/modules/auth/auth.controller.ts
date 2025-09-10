@@ -61,14 +61,6 @@ export class AuthController {
     return this.authService.authenticate(loginDto.email, loginDto.password);
   }
 
-<<<<<<< Updated upstream
-=======
-  @Post('change-category/:userId')
-  async chengeCategpry(@Param('userId') userId: string) {
-    return this.authService.changeUserCategory(userId);
-  }
-
->>>>>>> Stashed changes
   @ApiExcludeEndpoint()
   @Put('reset-password')
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
@@ -84,8 +76,7 @@ export class AuthController {
     return this.authService.changePassword(changePasswordDto);
   }
 
- 
-   @Get('nearby-users/:userId')
+  @Get('nearby-users/:userId')
   async findNearbyUsers(@Param('userId') userId: string) {
     const nearbyUsers = await this.authService.findNearbyUsers(userId, 20);
     return nearbyUsers;

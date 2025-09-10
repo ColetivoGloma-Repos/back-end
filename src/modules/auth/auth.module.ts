@@ -9,16 +9,10 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 import { CompanyModule } from '../company/company.module';
 // import { MailModule } from '../mail/mail.module';
 import { EnvConfig } from 'src/config';
-<<<<<<< Updated upstream
-=======
-import { ShelterModule } from '../shelter/shelter.module';
-
->>>>>>> Stashed changes
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Address]),
     CompanyModule,
-    ShelterModule,
     JwtModule.register({
       secret: EnvConfig.JWT_SECRET.JWT_SECRET,
       signOptions: { expiresIn: '7d' },
