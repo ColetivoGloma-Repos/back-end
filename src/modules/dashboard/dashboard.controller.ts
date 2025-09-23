@@ -51,4 +51,21 @@ export class DashboardController {
     async shelters(@Query() query: SearchShelter) {
         return this.shelterService.listAll(query)        
     }
+
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard) 
+    @Roles('admin')
+    @Get('/admins-initiative')        
+    async AdminInitiative(@Query() query: RequestCoordinator) {
+        return this.dashboardService.findAllAdminInitiative(query)        
+    }
+
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard) 
+    @Roles('admin')
+    @Patch('/admin-initiative')
+    async changeStatusToAdminInitiative(@Body() dto: ChangeCoordinatorStatusDto) {
+        const status = await this.dashboardService.changeAdminInitiativeStatus(dto)
+        return { message:  `O coordenador foi alterado para o status: ${status}`}
+    }
 }
