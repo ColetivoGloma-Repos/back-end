@@ -19,8 +19,6 @@ import { ApiBearerAuth, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { UpdateUserDto } from './dto/update.dto';
-// import { MailService } from '../mail/mail.service';
-
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {

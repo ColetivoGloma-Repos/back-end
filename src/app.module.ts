@@ -15,11 +15,13 @@ import { SearchModule } from './modules/search/search.module';
 import { ManagementModule } from './modules/management/management.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
     TypeOrmModule.forRoot(dataSourceConfig() as TypeOrmModuleOptions),
     AuthModule,
+    MailModule,
     CompanyModule,
     NeedModule,
     ShelterModule,

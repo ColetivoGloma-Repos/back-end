@@ -1,30 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import axios from 'axios';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
-  async sendMailLocaweb(to: string, subject: string, body: string) {
-    const apiUrl = process.env.API_REQUEST_LOCAWEB;
-    const apiKey = process.env.LOCALWEB_KEY;
-
-    const payload = {
-      subject,
-      body,
-      from: process.env.SMTP_MAIL_HOST,
-      to,
-      headers: {
-        'Content-Type': 'text/plain',
+  async sendMailLocawebBase(to: string, subject: string, body: string) {
+    const transporter = nodemailer.createTransport({
+      host: 'smtplw.com.br',
+      port: 587,
+      secure: false, 
+      auth: {
+        user: process.env.SMTP_USER, 
+        pass: process.env.SMTP_PASS,
       },
-    };
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+    const mailOptions = {
+      from: '"Coletivo Gloma" <envios@coletivogloma.com.br>',
+      to,
+      subject,
+      text: body,
     };
 
     try {
-      const response = await axios.post(apiUrl, payload, { headers });
-      return response.data;
+      const info = await transporter.sendMail(mailOptions);
+      return { message: 'E-mail enviado com sucesso', info };
     } catch (error) {
       throw new Error('Erro ao enviar e-mail pela Locaweb: ' + error.message);
     }
