@@ -15,6 +15,7 @@ import { SearchModule } from './modules/search/search.module';
 import { ManagementModule } from './modules/management/management.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { NotificationModule } from './modules/notifications/notification.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     CompanyModule,
     NeedModule,
     ShelterModule,
+    NotificationModule,
     DashboardModule,
     DistribuitionPointsModule,
     ProductsModule,

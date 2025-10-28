@@ -5,12 +5,14 @@ import { DistribuitionPointsService } from './distribuition-point.service';
 import { DistribuitionPointsController } from './distribuition-point.controller';
 import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/product.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([DistribuitionPoints]),
     forwardRef(() => AuthModule),
     forwardRef(() => ProductsModule),
+    NotificationModule,
   ],
   providers: [DistribuitionPointsService],
   controllers: [DistribuitionPointsController],
