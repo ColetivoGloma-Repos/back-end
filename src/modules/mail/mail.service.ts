@@ -5,7 +5,7 @@ import * as nodemailer from 'nodemailer';
 export class MailService {
   async sendMailLocawebBase(to: string, subject: string, body: string) {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.locaweb.com.br',
+      host: 'smtplw.com.br',
       port: 587,
       secure: false,
       auth: {
@@ -15,7 +15,7 @@ export class MailService {
     });
 
     const mailOptions = {
-      from: 'info@coletivogloma.com.br>',
+      from: 'coletivogloma@info.coletivogloma.com.br', 
       to,
       subject,
       text: body,
