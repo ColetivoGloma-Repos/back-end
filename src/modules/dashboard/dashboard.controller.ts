@@ -59,7 +59,7 @@ export class DashboardController {
     async AdminInitiative(@Query() query: RequestCoordinator) {
         return this.dashboardService.findAllAdminInitiative(query)        
     }
-
+/* Adjusts here
     @ApiBearerAuth()
     @UseGuards(AuthGuard('jwt'), RolesGuard) 
     @Roles('admin')
@@ -68,4 +68,5 @@ export class DashboardController {
         const status = await this.dashboardService.changeAdminInitiativeStatus(dto)
         return { message:  `O coordenador foi alterado para o status: ${status}`}
     }
+       */ 
 }

@@ -91,7 +91,7 @@ export class DashboardService {
     total,
   };
 }
-
+/*
  async changeAdminInitiativeStatus(data: ChangeCoordinatorStatusDto): Promise<string> {
     try {   
         const coordinator = await this.usersRepository.findOne({
@@ -117,6 +117,6 @@ export class DashboardService {
             throw e;
         }
     }
-
+*/
 
 }
