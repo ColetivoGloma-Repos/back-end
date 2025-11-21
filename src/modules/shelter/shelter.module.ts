@@ -5,11 +5,14 @@ import { ShelterController } from './shelter.controller';
 import { ShelterService } from './shelter.service';
 import { Address } from '../auth/entities/adress.enity';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationModule } from '../notifications/notification.module';
+
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Shelter, Address]),
     forwardRef(() => AuthModule),
+    NotificationModule,
   ],
   providers: [ShelterService],
   controllers: [ShelterController],
