@@ -18,8 +18,7 @@ import { LoginDto } from './dto/login.dto';
 import { ApiBearerAuth, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
-// import { MailService } from '../mail/mail.service';
-
+import { UpdateUserDto } from './dto/update.dto';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -44,8 +43,8 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Patch('update/:userId')
-  async update(@Request() req: any, @Body() updates: CreateUserDto) {
-    return this.authService.updateAccount(req.user.id, updates);
+  async update(@Request() req: any, @Body() updates: UpdateUserDto) {
+     return this.authService.updateAccount(req.user.id, updates);
   }
 
   @ApiBearerAuth()
@@ -60,16 +59,24 @@ export class AuthController {
     return this.authService.authenticate(loginDto.email, loginDto.password);
   }
 
+
+  @Post('change-category/:userId')
+  async requerChangeToPassword(@Param('userId') userId: string) {
+    return this.authService.changeUserCategory(userId);
+  }
+
   @ApiExcludeEndpoint()
   @Put('reset-password')
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
+
   @ApiExcludeEndpoint()
   @Put('activate/:activationCode')
   async activateUser(@Param('activationCode') activationCode: string) {
     return this.authService.activateUser(activationCode);
   }
+  
   @Put('change-password')
   async changePassword(@Body() changePasswordDto: ChangePasswordDto) {
     return this.authService.changePassword(changePasswordDto);

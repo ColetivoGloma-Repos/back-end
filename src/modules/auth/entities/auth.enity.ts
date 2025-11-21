@@ -29,7 +29,7 @@ export class User {
   @Column()
   password: string;
 
-  @OneToOne(() => Address)
+  @OneToOne(() => Address, { nullable: true })
   @JoinColumn()
   address: Address;
 
@@ -65,7 +65,10 @@ export class User {
 
   @Column({ nullable: true })
   code: string;
-
+/*
+  @Column({ nullable: false, default: false })
+  isAdminInitiative: boolean;
+*/
   @ManyToMany(() => Shelter, (shelter) => shelter.coordinators, {
     nullable: true,
   })

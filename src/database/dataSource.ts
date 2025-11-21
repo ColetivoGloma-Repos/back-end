@@ -13,7 +13,7 @@ import { Management } from 'src/modules/management/entities/management.entity';
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 import { Notification } from 'src/modules/notifications/entities/notification.entity';
 
-export const dataSourceConfig = (): DataSourceOptions => {
+export const dataSourceConfig = (): DataSourceOptions => { 
   return {
     type: 'postgres',
     ...(EnvConfig.ENV === 'production'
@@ -35,9 +35,8 @@ export const dataSourceConfig = (): DataSourceOptions => {
           password: EnvConfig.database.PASSWORD_DB,
           database: EnvConfig.database.NAME_DB,
           synchronize: true,
-          ssl: {
-            rejectUnauthorized: false,
-          },
+          ssl: false,
+         
         }),
     entities: [
       User,

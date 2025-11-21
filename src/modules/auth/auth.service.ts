@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -19,15 +20,23 @@ import { CompanyService } from '../company/company.service';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
-import { Status } from './enums/auth';
+import { EAuthRoles, Status } from './enums/auth';
+import { UpdateUserDto } from './dto/update.dto';
+import { geoResult } from '../company/utils/geoResult';
+import { Shelter } from '../shelter/entities/shelter.entity';
+
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Address)
+    private addressRepository: Repository<Address>,
     private jwtService: JwtService,
     private companyService: CompanyService,
+    @InjectRepository(Shelter)
+    private shelterRepository: Repository<Shelter>,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -44,9 +53,10 @@ export class AuthService {
   public async getProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['address', 'files'],
+      relations: ['address', 'files', 'myShelters'],
     });
   
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -60,7 +70,7 @@ export class AuthService {
   
     const result = { ...user };
     delete result.password;
-
+    
     return {
       status: 200,
       data: {
@@ -75,7 +85,7 @@ export class AuthService {
         status: user.status,
         code: user.code,
         address: user.address,
-        url: fileUrl,
+        url: fileUrl,       
       },
     };
   }
@@ -220,9 +230,9 @@ export class AuthService {
     return { message: 'Conta deletada com sucesso' };
   }
 
-  public async updateAccount(userId: string, updates: Partial<User>) {
+  public async updateAccount(userId: string, updates: UpdateUserDto) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
-
+    
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
@@ -230,7 +240,7 @@ export class AuthService {
     if (updates.password) {
       updates.password = await hash(updates.password, 10);
     }
-
+  
     /**
      * Se o usuário tentar alterar o email, podemos ter emails
      * repetidos no banco, é bom adicionar uma lógica pra
@@ -238,27 +248,62 @@ export class AuthService {
      * isso, criando uma outra so pro email
      */
 
-    const updatedUser = await this.usersRepository.save({
-      ...user,
-      ...updates,
-    });
+  if (updates.address) {
+  const address = new Address();
+  address.pais = 'Brazil';
+  Object.assign(address, updates.address);
+  const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(newAddress);
 
-    delete updatedUser.password;
+  user.address = saveAddress;
+  }
 
-    return updatedUser;
+    const { address, ...rest } = updates;
+    Object.assign(user, rest);
+
+  const updatedUser = await this.usersRepository.save(user);
+
+  delete updatedUser.password;
+
+  return updatedUser;
+
+  }
+  public async changeUserCategory(userId: string): Promise<void> {
+  const user = await this.getProfile(userId);
+
+  if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
+    throw new BadRequestException('Dados inválidos.');
+  }
+
+   const shelters = await this.shelterRepository
+      .createQueryBuilder('shelter')
+      .leftJoin('shelter.coordinators', 'coordinator')
+      .where('coordinator.id = :userId', { userId })
+      .getMany();
+
+    if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+      if (!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) && shelters.length > 0) {
+        user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN);
+      } else {
+        throw new BadRequestException('Usuário já cadastrado como coordenador.');
+      }
+    } else {
+      user.data.roles.push(EAuthRoles.COORDINATOR);
+    }
+
+    await this.usersRepository.save(user.data);
   }
 
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
     });
-    //adicionando pesquisa company
+
     const company = await this.companyService.findByEmail(email);
-    //adiciona comparação para validação de e-mail
+
     if (!user && !company) {
       throw new Error('Usuário não encontrado');
     }
-    //Início da lógica do token para a company
     let token = '';
     if (company && !user) {
       const passwordMatchesCompany = await compare(password, company.password);
@@ -274,7 +319,6 @@ export class AuthService {
       token = this.jwtService.sign(payload);
       return { token };
     }
-    //fim da lógica do token para a company
 
     const passwordMatches = await compare(password, user.password);
 
@@ -291,6 +335,8 @@ export class AuthService {
 
     return { token };
   }
+  
+
   public async findNearbyUsers(userId: string, radius: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -331,6 +377,8 @@ export class AuthService {
     return await query.getMany();
   }
 }
+
+
 
 function generateRandomCode(length: number): string {
   const characters =
