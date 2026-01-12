@@ -5,7 +5,7 @@ import * as nodemailer from 'nodemailer';
 export class MailService {
   async sendMailLocawebBase(to: string, subject: string, body: string) {
     const transporter = nodemailer.createTransport({
-      host: 'smtp.locaweb.com.br',
+      host: 'smtplw.com.br',
       port: 587,
       secure: false,
       auth: {
@@ -15,7 +15,7 @@ export class MailService {
     });
 
     const mailOptions = {
-      from: 'info@coletivogloma.com.br>',
+      from: 'coletivogloma@info.coletivogloma.com.br', 
       to,
       subject,
       text: body,
@@ -27,5 +27,11 @@ export class MailService {
     } catch (error) {
       throw new Error('Erro ao enviar e-mail pela Locaweb: ' + error.message);
     }
+  }
+
+  async sendWelcomeMail(to: string, name: string) {
+    const subject = 'Bem-vindo ao Coletivo Gloma!';
+    const body = `Olá, ${name}!\n\nSeja bem-vindo(a) ao Coletivo Gloma. Estamos felizes em ter você conosco!\n\nQualquer dúvida, estamos à disposição.\n\nEquipe Coletivo Gloma`;
+    return this.sendMailLocawebBase(to, subject, body);
   }
 }
