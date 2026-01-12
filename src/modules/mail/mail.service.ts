@@ -28,4 +28,10 @@ export class MailService {
       throw new Error('Erro ao enviar e-mail pela Locaweb: ' + error.message);
     }
   }
+
+  async sendWelcomeMail(to: string, name: string) {
+    const subject = 'Bem-vindo ao Coletivo Gloma!';
+    const body = `Olá, ${name}!\n\nSeja bem-vindo(a) ao Coletivo Gloma. Estamos felizes em ter você conosco!\n\nQualquer dúvida, estamos à disposição.\n\nEquipe Coletivo Gloma`;
+    return this.sendMailLocawebBase(to, subject, body);
+  }
 }

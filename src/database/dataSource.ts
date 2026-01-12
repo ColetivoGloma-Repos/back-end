@@ -11,6 +11,7 @@ import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/di
 import { Products } from 'src/modules/products/entities/product.entity';
 import { Management } from 'src/modules/management/entities/management.entity';
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
+import { PasswordResetToken } from 'src/modules/auth/entities/password-reset-token.entity';
 
 export const dataSourceConfig = (): DataSourceOptions => { 
   return {
@@ -49,6 +50,7 @@ export const dataSourceConfig = (): DataSourceOptions => {
       FileEntity,
       FileUploadEntity,
       Management,
+      PasswordResetToken,
     ],
   };
 };

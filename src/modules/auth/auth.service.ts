@@ -22,6 +22,10 @@ import { ChangePasswordDto } from './dto/changepassword.dto';
 import { Status } from './enums/auth';
 import { UpdateUserDto } from './dto/update.dto';
 import { geoResult } from '../company/utils/geoResult';
+import { MailService } from '../mail/mail.service';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { v4 as uuidv4 } from 'uuid';
+import { BadRequestException } from '@nestjs/common';
 
 
 @Injectable()
@@ -31,8 +35,11 @@ export class AuthService {
     private usersRepository: Repository<User>,
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
+    @InjectRepository(PasswordResetToken)
+    private passwordResetTokenRepo: Repository<PasswordResetToken>,
     private jwtService: JwtService,
     private companyService: CompanyService,
+    private mailService: MailService, 
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -114,6 +121,8 @@ export class AuthService {
       };
       const token = this.jwtService.sign(payload);
 
+      await this.mailService.sendWelcomeMail(newUser.email, newUser.name);
+
       return { token };
     } catch (error) {
       logger.error(error);
@@ -142,7 +151,7 @@ export class AuthService {
         user.email,
       );
 
-      // this.mailService.sendResetPassword(mailDto);
+       //this.mailService.sendResetPassword(mailDto);
 
       return { message: 'Senha redefinida com sucesso', newPassword };
     } catch (error) {
@@ -344,6 +353,52 @@ export class AuthService {
       .andWhere('user.id != :userId', { userId });
 
     return await query.getMany();
+  }
+
+  public async requestPasswordReset(email: string) {
+    const user = await this.usersRepository.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    await this.passwordResetTokenRepo.save({
+      email: user.email,
+      token,
+      expiresAt,
+    });
+
+    const resetLink = `https://app.coletivogloma.com.br/reset-password?token=${token}`;
+    await this.mailService.sendMailLocawebBase(
+      user.email,
+      'Recuperação de senha - Coletivo Gloma',
+      `Olá, ${user.name}!\n\nClique no link para redefinir sua senha: ${resetLink}\n\nEste link expira em 1 hora.\n\nSe você não solicitou a recuperação de senha, ignore este e-mail.\n\nEquipe Coletivo Gloma`
+    );
+
+    return { message: 'E-mail de recuperação enviado com sucesso.' };
+  }
+
+  public async resetPasswordWithToken(token: string, newPassword: string) {
+    const resetToken = await this.passwordResetTokenRepo.findOne({ where: { token } });
+    
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      throw new BadRequestException('Token inválido ou expirado');
+    }
+
+    const user = await this.usersRepository.findOne({ where: { email: resetToken.email } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    user.password = await hash(newPassword, 10);
+    await this.usersRepository.save(user);
+
+    // Invalida o token após o uso
+    await this.passwordResetTokenRepo.delete({ token });
+
+    return { message: 'Senha redefinida com sucesso' };
   }
 }
 

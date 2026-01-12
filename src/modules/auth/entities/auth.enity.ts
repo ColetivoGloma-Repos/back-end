@@ -33,7 +33,6 @@ export class User {
   @JoinColumn()
   address: Address;
 
-
   @Column({ nullable: true })
   phone: string;
 
