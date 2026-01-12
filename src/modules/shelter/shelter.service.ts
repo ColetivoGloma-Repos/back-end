@@ -10,6 +10,9 @@ import { SearchShelter } from './dto/search-shelter';
 import { Paginate } from 'src/common/interface';
 import { SearchCoordinatorDto } from './dto/coordinator.dto';
 import { CreateUserDto } from '../auth/dto/auth.dto';
+import { NotificationService } from '../notifications/notification.service';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationSeverity } from '../notifications/enums/notification-severity.enum';
 
 interface IRelations {
   address?: boolean;
@@ -25,8 +28,9 @@ export class ShelterService {
     private usersRepository: Repository<User>,
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
+    private notificationService: NotificationService 
   ) {}
-
+  
   async create(createShelter: CreateShelterDto, currentUser: CreateUserDto) {
     const user = await this.usersRepository.findOne({
       where: { id: currentUser.id },
@@ -43,6 +47,13 @@ export class ShelterService {
     shelter.address = saveAddress;
 
     await this.shelterRepository.save(shelter);
+
+    await this.notificationService.notifyAllUsers({
+      type: NotificationType.SHELTER,
+      message: `Abrigo criado ${shelter.name}`,
+      severity: NotificationSeverity.INFO,
+      title: 'Criação de Abrigo',
+    });
 
     return shelter;
   }

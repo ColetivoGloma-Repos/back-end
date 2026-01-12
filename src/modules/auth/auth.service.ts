@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -19,13 +20,13 @@ import { CompanyService } from '../company/company.service';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { SendMailResetPasswordDto } from '../mail/dto/sendmailresetpassword.dto';
 import { ChangePasswordDto } from './dto/changepassword.dto';
-import { Status } from './enums/auth';
+import { EAuthRoles, Status } from './enums/auth';
 import { UpdateUserDto } from './dto/update.dto';
 import { geoResult } from '../company/utils/geoResult';
 import { MailService } from '../mail/mail.service';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { BadRequestException } from '@nestjs/common';
+import { Shelter } from '../shelter/entities/shelter.entity';
 
 
 @Injectable()
@@ -40,6 +41,8 @@ export class AuthService {
     private jwtService: JwtService,
     private companyService: CompanyService,
     private mailService: MailService, 
+    @InjectRepository(Shelter)
+    private shelterRepository: Repository<Shelter>,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -56,7 +59,7 @@ export class AuthService {
   public async getProfile(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['address', 'files'],
+      relations: ['address', 'files', 'myShelters'],
     });
   
     
@@ -273,6 +276,31 @@ export class AuthService {
   return updatedUser;
 
   }
+  public async changeUserCategory(userId: string): Promise<void> {
+  const user = await this.getProfile(userId);
+
+  if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
+    throw new BadRequestException('Dados inválidos.');
+  }
+
+   const shelters = await this.shelterRepository
+      .createQueryBuilder('shelter')
+      .leftJoin('shelter.coordinators', 'coordinator')
+      .where('coordinator.id = :userId', { userId })
+      .getMany();
+
+    if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
+      if (!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) && shelters.length > 0) {
+        user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN);
+      } else {
+        throw new BadRequestException('Usuário já cadastrado como coordenador.');
+      }
+    } else {
+      user.data.roles.push(EAuthRoles.COORDINATOR);
+    }
+
+    await this.usersRepository.save(user.data);
+  }
 
   public async authenticate(email: string, password: string) {
     const user = await this.usersRepository.findOne({
@@ -315,6 +343,8 @@ export class AuthService {
 
     return { token };
   }
+  
+
   public async findNearbyUsers(userId: string, radius: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -401,6 +431,8 @@ export class AuthService {
     return { message: 'Senha redefinida com sucesso' };
   }
 }
+
+
 
 function generateRandomCode(length: number): string {
   const characters =

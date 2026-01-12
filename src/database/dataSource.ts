@@ -12,6 +12,7 @@ import { Products } from 'src/modules/products/entities/product.entity';
 import { Management } from 'src/modules/management/entities/management.entity';
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 import { PasswordResetToken } from 'src/modules/auth/entities/password-reset-token.entity';
+import { Notification } from 'src/modules/notifications/entities/notification.entity';
 
 export const dataSourceConfig = (): DataSourceOptions => { 
   return {
@@ -51,6 +52,7 @@ export const dataSourceConfig = (): DataSourceOptions => {
       FileUploadEntity,
       Management,
       PasswordResetToken,
+      Notification
     ],
   };
 };

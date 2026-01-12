@@ -12,10 +12,10 @@ import { CompanyModule } from '../company/company.module';
 import { EnvConfig } from 'src/config';
 import { MailModule } from '../mail/mail.module';
 import { TokenCleanupService } from './services/token-cleanup.service'; 
-
+import { Shelter } from '../shelter/entities/shelter.entity';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Address, PasswordResetToken]),
+    TypeOrmModule.forFeature([User, Address, PasswordResetToken, Shelter]),
     CompanyModule,
     MailModule,
     ScheduleModule.forRoot(),

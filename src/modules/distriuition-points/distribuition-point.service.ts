@@ -24,6 +24,9 @@ import { ProductType } from '../products/enums/products.enum';
 import { ProductStatus } from '../products/enums/product.status';
 import { StatusDistributionPoint } from './enums/distribuition-point.enum';
 import { EAuthRoles } from '../auth/enums/auth';
+import { NotificationType } from '../notifications/enums/notification-type.enum';
+import { NotificationSeverity } from '../notifications/enums/notification-severity.enum';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class DistribuitionPointsService {
@@ -38,6 +41,7 @@ export class DistribuitionPointsService {
     private productsRepository: Repository<Products>,
     @Inject(forwardRef(() => ProductService))
     private productService: ProductService,
+    private notificationService: NotificationService
   ) {}
 
   public async create(
@@ -60,6 +64,13 @@ export class DistribuitionPointsService {
     distibuitionPoint.creator = user;
 
     await this.distribuitionPointsRepository.save(distibuitionPoint);
+
+    await this.notificationService.notifyAllUsers({
+      type: NotificationType.DISTRIBUTION,
+      message: `Ponto de distribuição criado: ${distibuitionPoint.name}`,
+      severity: NotificationSeverity.INFO,
+      title: 'Criação de Ponto de Distribuição',
+    });
 
     return distibuitionPoint;
   }

@@ -61,6 +61,12 @@ export class AuthController {
     return this.authService.authenticate(loginDto.email, loginDto.password);
   }
 
+
+  @Post('change-category/:userId')
+  async requerChangeToPassword(@Param('userId') userId: string) {
+    return this.authService.changeUserCategory(userId);
+  }
+
   @ApiExcludeEndpoint()
   @Put('reset-password')
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
