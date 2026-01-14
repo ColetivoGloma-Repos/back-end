@@ -19,6 +19,8 @@ import { ApiBearerAuth, ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
 import { ChangePasswordDto } from './dto/changepassword.dto';
 import { ResetPasswordDto } from './dto/resetpassword.dto';
 import { UpdateUserDto } from './dto/update.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordWithTokenDto } from './dto/reset-password-with-token.dto';
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -86,5 +88,15 @@ export class AuthController {
   async findNearbyUsers(@Param('userId') userId: string) {
     const nearbyUsers = await this.authService.findNearbyUsers(userId, 20);
     return nearbyUsers;
+  }
+
+  @Post('forgot-password')
+  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password-with-token')
+  async resetPasswordWithToken(@Body() dto: ResetPasswordWithTokenDto) {
+    return this.authService.resetPasswordWithToken(dto.token, dto.newPassword);
   }
 }
