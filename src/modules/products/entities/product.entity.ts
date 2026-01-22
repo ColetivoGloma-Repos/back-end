@@ -27,7 +27,10 @@ export class Product {
   @Column({ type: 'boolean', default: true })
   active!: boolean;
 
-  @OneToMany(() => PointRequestedProduct, (rp) => rp.product)
+  @OneToMany(
+    () => PointRequestedProduct,
+    (requestedProduct) => requestedProduct.product,
+  )
   requestedInPoints!: PointRequestedProduct[];
 
   @CreateDateColumn({ type: 'timestamptz' })

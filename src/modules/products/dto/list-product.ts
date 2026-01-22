@@ -1,21 +1,16 @@
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsOptional } from 'class-validator';
 import { QueryRequest } from 'src/common/dto/query';
+import { ToBoolean } from 'src/common/validation';
 
 export class ListProductsDto extends QueryRequest {
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  q?: string;
-
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (value === true || value === false) return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return undefined;
+  @ApiPropertyOptional({
+    example: true,
+    nullable: true,
+    description: 'Filtra por produtos ativos/inativos',
   })
+  @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   active?: boolean;
 }

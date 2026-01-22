@@ -27,11 +27,7 @@ export class ProductsService {
   }
 
   async create(body: CreateProductDto): Promise<Product> {
-    const name = (body.name ?? '').trim();
-    if (!name)
-      throw new ConflictException(ProductMessagesHelper.PRODUCT_NAME_REQUIRED);
-
-    const slug = this.normalizeSlug(body.slug?.trim() || name);
+    const slug = this.normalizeSlug(body.slug || body.name);
 
     const existing = await this.repository.findOne({ where: { slug } });
     if (existing)
@@ -40,8 +36,8 @@ export class ProductsService {
       );
 
     const entity = this.repository.create({
-      name,
       slug,
+      name: body.name,
       unit: body.unit ?? null,
       active: body.active ?? true,
     });
@@ -53,18 +49,14 @@ export class ProductsService {
     name: string,
     unit?: string | null,
   ): Promise<Product> {
-    const fixedName = (name ?? '').trim();
-    if (!fixedName)
-      throw new ConflictException(ProductMessagesHelper.PRODUCT_NAME_REQUIRED);
-
-    const slug = this.normalizeSlug(fixedName);
+    const slug = this.normalizeSlug(name);
 
     const existing = await this.repository.findOne({ where: { slug } });
     if (existing) return existing;
 
     const entity = this.repository.create({
-      name: fixedName,
       slug,
+      name: name,
       unit: unit ?? null,
       active: true,
     });
@@ -85,12 +77,13 @@ export class ProductsService {
 
     const page = Math.floor(skip / limit) + 1;
 
-    const where: any = {};
-    if (typeof query.active === 'boolean') where.active = query.active;
+    const where: any = {
+      active: query.active,
+    };
 
-    if (query.q && query.q.trim()) {
-      const q = query.q.trim();
-      where.name = ILike(`%${q}%`);
+    if (query.q) {
+      const search = query.q;
+      where.name = ILike(`%${search}%`);
     }
 
     const [items, total] = await this.repository.findAndCount({
@@ -127,28 +120,24 @@ export class ProductsService {
   async update(id: string, body: UpdateProductDto): Promise<Product> {
     const product = await this.findById(id);
 
-    if (typeof body.name === 'string') {
-      const name = body.name.trim();
-      if (!name)
-        throw new ConflictException(
-          ProductMessagesHelper.PRODUCT_NAME_NOT_EMPTY,
-        );
-      product.name = name;
-
-      if (!body.slug) {
-        product.slug = this.normalizeSlug(name);
+    if (body.name !== undefined) {
+      product.name = body.name;
+      if (body.slug === undefined) {
+        product.slug = this.normalizeSlug(body.name);
       }
     }
 
-    if (typeof body.slug === 'string') {
-      const slug = this.normalizeSlug(body.slug);
-      if (!slug)
-        throw new ConflictException(ProductMessagesHelper.INVALID_SLUG);
-      product.slug = slug;
+    if (body.slug !== undefined) {
+      product.slug = this.normalizeSlug(body.slug);
     }
 
-    if (body.unit !== undefined) product.unit = body.unit ?? null;
-    if (typeof body.active === 'boolean') product.active = body.active;
+    if (body.unit !== undefined) {
+      product.unit = body.unit ?? null;
+    }
+
+    if (body.active !== undefined) {
+      product.active = body.active;
+    }
 
     if (product.slug) {
       const other = await this.repository.findOne({

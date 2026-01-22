@@ -42,27 +42,25 @@ export class DistributionPointService {
     const title = (body.title ?? '').trim();
     if (!title)
       throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('Título'),
+        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('title'),
       );
 
     const phone = (body.phone ?? '').trim();
     if (!phone)
       throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('Telefone'),
+        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('phone'),
       );
 
     const ownerId = (body.ownerId ?? '').trim();
     if (!ownerId)
       throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED(
-          'Id do proprietário',
-        ),
+        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('ownerId'),
       );
 
     const address = body.address;
     if (!address)
       throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('Endereço'),
+        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('address'),
       );
 
     const requestedProducts = Array.isArray(body.requestedProducts)
@@ -88,7 +86,7 @@ export class DistributionPointService {
         if (!name) {
           throw new ConflictException(
             DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'Nome',
+              'name',
             ),
           );
         }
@@ -97,7 +95,7 @@ export class DistributionPointService {
         if (!Number.isFinite(quantity) || quantity < 0) {
           throw new ConflictException(
             DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'Quantidade solicitada',
+              'requestedQuantity',
             ),
           );
         }
@@ -106,7 +104,7 @@ export class DistributionPointService {
         if (slug && slug.length > 200) {
           throw new ConflictException(
             DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'Slug',
+              'slug',
             ),
           );
         }
@@ -119,7 +117,7 @@ export class DistributionPointService {
         ) {
           throw new ConflictException(
             DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'Unidade',
+              'unit',
             ),
           );
         }
@@ -300,7 +298,7 @@ export class DistributionPointService {
       const title = String(body.title ?? '').trim();
       if (!title)
         throw new ConflictException(
-          DistributionPointsMessagesHelper.FIELD_INVALID('Título'),
+          DistributionPointsMessagesHelper.FIELD_INVALID('title'),
         );
       point.title = title;
     }
@@ -312,7 +310,7 @@ export class DistributionPointService {
       const phone = String(body.phone ?? '').trim();
       if (!phone)
         throw new ConflictException(
-          DistributionPointsMessagesHelper.FIELD_INVALID('Telefone'),
+          DistributionPointsMessagesHelper.FIELD_INVALID('phone'),
         );
       point.phone = phone;
     }
@@ -322,24 +320,27 @@ export class DistributionPointService {
     }
 
     if (body.address !== undefined && body.address) {
-      const a = body.address;
+      const address = body.address;
 
       if (!point.address) {
         point.address = new Address();
       }
 
-      if (a.cep !== undefined) point.address.cep = a.cep;
-      if (a.estado !== undefined) point.address.estado = a.estado;
-      if (a.pais !== undefined) point.address.pais = a.pais;
-      if (a.municipio !== undefined) point.address.municipio = a.municipio;
-      if (a.bairro !== undefined) point.address.bairro = a.bairro;
-      if (a.logradouro !== undefined) point.address.logradouro = a.logradouro;
-      if (a.numero !== undefined) point.address.numero = a.numero;
-      if (a.complemento !== undefined)
-        point.address.complemento = a.complemento ?? null;
-      if (a.latitude !== undefined) point.address.latitude = a.latitude ?? null;
-      if (a.longitude !== undefined)
-        point.address.longitude = a.longitude ?? null;
+      if (address.cep !== undefined) point.address.cep = address.cep;
+      if (address.estado !== undefined) point.address.estado = address.estado;
+      if (address.pais !== undefined) point.address.pais = address.pais;
+      if (address.municipio !== undefined)
+        point.address.municipio = address.municipio;
+      if (address.bairro !== undefined) point.address.bairro = address.bairro;
+      if (address.logradouro !== undefined)
+        point.address.logradouro = address.logradouro;
+      if (address.numero !== undefined) point.address.numero = address.numero;
+      if (address.complemento !== undefined)
+        point.address.complemento = address.complemento ?? null;
+      if (address.latitude !== undefined)
+        point.address.latitude = address.latitude ?? null;
+      if (address.longitude !== undefined)
+        point.address.longitude = address.longitude ?? null;
     }
 
     return this.dataSource.transaction(async (transactionManager) => {

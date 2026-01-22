@@ -2,7 +2,7 @@ export const PointRequestedProductsMessagesHelper = {
   INVALID_QUANTITY_SOLICITED: 'Quantidade solicitada inválida.',
   SOLICITATION_NOT_FOUND: 'Solicitação não encontrada.',
   PRODUCT_NOT_ACEPTING_DONATIONS:
-    'Este produto não está aceitando doações no momento.',
+    'Este produto não está aceitando mais doações no momento.',
   QUANTITY_EXCEEDS_REQUESTED: (maxQuantity: number) =>
     `A quantidade da doação excede a quantidade solicitada. Máximo atual: ${maxQuantity}`,
   GOAL_ALREADY_REACHED: 'A meta de doações para este produto já foi atingida.',
