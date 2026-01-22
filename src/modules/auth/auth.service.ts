@@ -260,8 +260,8 @@ export class AuthService {
   const address = new Address();
   address.pais = 'Brazil';
   Object.assign(address, updates.address);
-  const newAddress = await geoResult(address);
-  const saveAddress = await this.addressRepository.save(newAddress);
+  // const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(address);
 
   user.address = saveAddress;
   }
