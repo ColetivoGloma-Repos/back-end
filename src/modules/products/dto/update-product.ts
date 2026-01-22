@@ -1,33 +1,22 @@
-import { IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { ProductType } from '../enums/products.enum';
-import { Type } from 'class-transformer';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class UpdateProduct {
-  @ApiProperty()
+export class UpdateProductDto {
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  name: string;
+  @MaxLength(160)
+  name?: string;
 
-  @ApiProperty()
+  @IsOptional()
   @IsString()
+  @MaxLength(30)
+  unit?: string | null;
+
   @IsOptional()
-  type: ProductType;
+  @IsBoolean()
+  active?: boolean;
 
-  @ApiProperty()
-  @IsNumber()
   @IsOptional()
-  quantity: number;
-
-  @ApiProperty()
-  @IsOptional()
-  @IsPositive()
-  @Type(() => Number)
-  weight: number;
-
-
-  @ApiProperty()
   @IsString()
-  @IsOptional()
-  description: string;
+  @MaxLength(120)
+  slug?: string;
 }

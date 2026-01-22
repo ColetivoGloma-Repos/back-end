@@ -1,65 +1,38 @@
-import { Request } from '@nestjs/common';
 import {
+  Entity,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  ManyToOne,
-  PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Index,
+  OneToMany,
 } from 'typeorm';
-import { ProductType } from '../enums/products.enum';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
-import { User } from 'src/modules/auth/entities/auth.enity';
-import { ProductStatus } from '../enums/product.status';
+import { PointRequestedProduct } from 'src/modules/distriuition-points/entities/point-requested-product.entity';
 
-@Entity()
-export class Products {
+@Entity('products')
+export class Product {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
-  @Column()
-  name: string;
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 120 })
+  slug!: string;
 
-  @Column({
-    type: 'enum',
-    enum: ProductType,
-    default: ProductType.OTHER,
-  })
-  type: ProductType;
+  @Column({ type: 'varchar', length: 160 })
+  name!: string;
 
-  @Column({
-    type: 'enum',
-    enum: ProductStatus,
-    default: ProductStatus.REQUESTED,
-  })
-  status: ProductStatus;
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  unit!: string | null;
 
-  @Column({ type: 'int', default: 0 })
-  quantity: number;
+  @Column({ type: 'boolean', default: true })
+  active!: boolean;
 
-  @Column({  type: 'decimal', precision: 10, scale: 2, default: 0 })
-  weight: number;
- 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  description: string;
+  @OneToMany(() => PointRequestedProduct, (rp) => rp.product)
+  requestedInPoints!: PointRequestedProduct[];
 
-  @ManyToOne(() => User, (user) => user)
-  creator: User;
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt!: Date;
 
-  @ManyToOne(
-    () => DistribuitionPoints,
-    (distribuitionPoints) => distribuitionPoints.products,
-    { nullable: true },
-  )
-  distribuitionPoint: DistribuitionPoints;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @DeleteDateColumn()
-  deletedAt: Date;
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updatedAt!: Date;
 }
