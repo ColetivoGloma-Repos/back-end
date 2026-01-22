@@ -10,7 +10,7 @@ export async function geoResult(address: Address): Promise<Address>{
     throw new Error('OPENCAGE_API_KEY não configurada');
   }
   
-  const geocodeResult = await opencage.geocode({ q: addressString, key: EnvConfig.OPENCAGE.API_KEY });
+  const geocodeResult = await opencage.geocode({ q: addressString, key: EnvConfig.OPENCAGE.API_KEY.trim() });
   
   if (geocodeResult.results.length > 0) {
     const { lat, lng } = geocodeResult.results[0].geometry;
