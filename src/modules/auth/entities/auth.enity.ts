@@ -10,10 +10,12 @@ import {
 import { Address } from '../entities/adress.enity';
 import { NeedVolunteers } from 'src/modules/need/entities/needVolunteers.entity';
 import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { EAuthRoles, Status } from '../enums/auth';
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
-
+import {
+  DistributionPoint,
+  Donation,
+} from 'src/modules/distribution-points/entities';
 
 @Entity()
 export class User {
@@ -65,7 +67,7 @@ export class User {
 
   @Column({ nullable: true })
   code: string;
-/*
+  /*
   @Column({ nullable: false, default: false })
   isAdminInitiative: boolean;
 */
@@ -74,18 +76,20 @@ export class User {
   })
   shelters: Shelter[];
 
-  @OneToMany(
-    () => DistribuitionPoints,
-    (distribuitionPoints) => distribuitionPoints.creator,
-    { nullable: true },
-  )
-  myDistribuitionPoints: DistribuitionPoints[];
-
   @OneToMany(() => Shelter, (shelter) => shelter.creator, {
     nullable: true,
   })
   myShelters: Shelter[];
 
-  @OneToMany(() => FileUploadEntity, file => file.user)
+  @OneToMany(
+    () => DistributionPoint,
+    (distributionPoint) => distributionPoint.owner,
+  )
+  ownedDistributionPoints: DistributionPoint[];
+
+  @OneToMany(() => FileUploadEntity, (file) => file.user)
   files: FileUploadEntity[];
+
+  @OneToMany(() => Donation, (d) => d.user)
+  donations!: Donation[];
 }

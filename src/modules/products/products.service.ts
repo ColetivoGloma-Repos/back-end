@@ -13,7 +13,7 @@ import { ProductMessagesHelper } from './shared';
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private readonly productsRepo: Repository<Product>,
+    private readonly repository: Repository<Product>,
   ) {}
 
   private normalizeSlug(value: string): string {
@@ -33,20 +33,20 @@ export class ProductsService {
 
     const slug = this.normalizeSlug(body.slug?.trim() || name);
 
-    const existing = await this.productsRepo.findOne({ where: { slug } });
+    const existing = await this.repository.findOne({ where: { slug } });
     if (existing)
       throw new ConflictException(
         ProductMessagesHelper.PRODUCT_SLUG_ALREADY_EXISTS,
       );
 
-    const entity = this.productsRepo.create({
+    const entity = this.repository.create({
       name,
       slug,
       unit: body.unit ?? null,
       active: body.active ?? true,
     });
 
-    return this.productsRepo.save(entity);
+    return this.repository.save(entity);
   }
 
   async getOrCreateByName(
@@ -59,10 +59,10 @@ export class ProductsService {
 
     const slug = this.normalizeSlug(fixedName);
 
-    const existing = await this.productsRepo.findOne({ where: { slug } });
+    const existing = await this.repository.findOne({ where: { slug } });
     if (existing) return existing;
 
-    const entity = this.productsRepo.create({
+    const entity = this.repository.create({
       name: fixedName,
       slug,
       unit: unit ?? null,
@@ -70,9 +70,9 @@ export class ProductsService {
     });
 
     try {
-      return await this.productsRepo.save(entity);
+      return await this.repository.save(entity);
     } catch {
-      const retry = await this.productsRepo.findOne({ where: { slug } });
+      const retry = await this.repository.findOne({ where: { slug } });
       if (retry) return retry;
       throw new ConflictException(ProductMessagesHelper.FAIL_TO_CREATE_PRODUCT);
     }
@@ -93,7 +93,7 @@ export class ProductsService {
       where.name = ILike(`%${q}%`);
     }
 
-    const [items, total] = await this.productsRepo.findAndCount({
+    const [items, total] = await this.repository.findAndCount({
       where,
       order: { name: 'ASC' },
       take: limit,
@@ -110,7 +110,7 @@ export class ProductsService {
   }
 
   async findById(id: string): Promise<Product> {
-    const product = await this.productsRepo.findOne({ where: { id } });
+    const product = await this.repository.findOne({ where: { id } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
@@ -118,7 +118,7 @@ export class ProductsService {
 
   async findBySlug(slug: string): Promise<Product> {
     const fixed = this.normalizeSlug(slug ?? '');
-    const product = await this.productsRepo.findOne({ where: { slug: fixed } });
+    const product = await this.repository.findOne({ where: { slug: fixed } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
@@ -151,7 +151,7 @@ export class ProductsService {
     if (typeof body.active === 'boolean') product.active = body.active;
 
     if (product.slug) {
-      const other = await this.productsRepo.findOne({
+      const other = await this.repository.findOne({
         where: { slug: product.slug },
       });
       if (other && other.id !== product.id) {
@@ -161,18 +161,18 @@ export class ProductsService {
       }
     }
 
-    return this.productsRepo.save(product);
+    return this.repository.save(product);
   }
 
   async setActive(id: string, active: boolean): Promise<Product> {
     const product = await this.findById(id);
     product.active = !!active;
-    return this.productsRepo.save(product);
+    return this.repository.save(product);
   }
 
   async remove(id: string): Promise<{ ok: true }> {
     const product = await this.findById(id);
-    await this.productsRepo.remove(product);
+    await this.repository.remove(product);
     return { ok: true };
   }
 }

@@ -7,8 +7,8 @@ import { AppService } from './app.service';
 import { NeedModule } from './modules/need/need.module';
 import { ShelterModule } from './modules/shelter/shelter.module';
 import { CompanyModule } from './modules/company/company.module';
-import { DistribuitionPointsModule } from './modules/distriuition-points/distribuition-point.module';
-import { ProductsModule } from './modules/products/product.module';
+import { DistributionPointModule } from './modules/distribution-points/distribution-point.module';
+import { ProductsModule } from './modules/products/products.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { SearchModule } from './modules/search/search.module';
@@ -28,7 +28,7 @@ import { MailModule } from './modules/mail/mail.module';
     ShelterModule,
     NotificationModule,
     DashboardModule,
-    DistribuitionPointsModule,
+    DistributionPointModule,
     ProductsModule,
     SearchModule,
     UploadModule,
