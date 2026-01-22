@@ -1,54 +1,65 @@
-import { IsString, IsOptional, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsNumber, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class UpdateAddressDto {
-  @ApiProperty()
-  @IsString()
+  @ApiPropertyOptional({ example: '40000000' })
   @IsOptional()
-  cep: string;
-
-  @ApiProperty()
   @IsString()
-  @IsOptional()
-  estado: string;
+  @MaxLength(20)
+  cep?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'BA' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  pais: string;
+  @MaxLength(80)
+  estado?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Brasil' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  municipio: string;
+  @MaxLength(120)
+  pais?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Salvador' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  bairro: string;
+  @MaxLength(120)
+  municipio?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Centro' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  logradouro: string;
+  @MaxLength(120)
+  bairro?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Rua Exemplo' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  numero: string;
+  @MaxLength(180)
+  logradouro?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: '123' })
+  @IsOptional()
   @IsString()
-  @IsOptional()
-  complemento: string;
+  @MaxLength(30)
+  numero?: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional({ example: 'Apto 101', nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  complemento?: string | null;
+
+  @ApiPropertyOptional({ example: -12.9714, nullable: true })
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  @IsOptional()
-  latitude: number;
+  latitude?: number | null;
 
-  @ApiProperty()
-  @IsNumber()
+  @ApiPropertyOptional({ example: -38.5014, nullable: true })
   @IsOptional()
-  longitude: number;
+  @Type(() => Number)
+  @IsNumber()
+  longitude?: number | null;
 }

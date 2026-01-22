@@ -1,52 +1,71 @@
-import { IsString, IsOptional, IsEmpty, IsNumber } from 'class-validator';
-import { ApiHideProperty, ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  IsNumber,
+} from 'class-validator';
 
 export class CreateAddressDto {
-  @ApiHideProperty()
-  @IsEmpty()
-  id: string;
-
-  @ApiProperty()
+  @ApiProperty({ example: '40000000' })
   @IsString()
-  cep: string;
+  @IsNotEmpty()
+  @MaxLength(20)
+  cep!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'BA' })
   @IsString()
-  estado: string;
+  @IsNotEmpty()
+  @MaxLength(80)
+  estado!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Brasil' })
   @IsString()
-  pais: string;
+  @IsNotEmpty()
+  @MaxLength(120)
+  pais!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Salvador' })
   @IsString()
-  municipio: string;
+  @IsNotEmpty()
+  @MaxLength(120)
+  municipio!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Centro' })
   @IsString()
-  bairro: string;
+  @IsNotEmpty()
+  @MaxLength(120)
+  bairro!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Rua Exemplo' })
   @IsString()
-  logradouro: string;
+  @IsNotEmpty()
+  @MaxLength(180)
+  logradouro!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '123' })
   @IsString()
-  numero: string;
+  @IsNotEmpty()
+  @MaxLength(30)
+  numero!: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiPropertyOptional({ example: 'Apto 101', nullable: true })
   @IsOptional()
-  complemento: string;
+  @IsString()
+  @MaxLength(120)
+  complemento?: string | null;
 
-  
-  @ApiProperty()
+  @ApiPropertyOptional({ example: -12.9714, nullable: true })
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  @IsOptional()
-  latitude: number;
+  latitude?: number | null;
 
-  @ApiProperty()
-  @IsNumber()
+  @ApiPropertyOptional({ example: -38.5014, nullable: true })
   @IsOptional()
-  longitude: number;
+  @Type(() => Number)
+  @IsNumber()
+  longitude?: number | null;
 }
