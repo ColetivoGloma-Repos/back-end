@@ -1,0 +1,66 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { DistributionPoint } from '../entities/distribution-point.entity';
+import { DistributionPointService } from '../services/distribution-point.service';
+import {
+  CreateDistributionPointDto,
+  ListDistributionPointsDto,
+  UpdateDistributionPointDto,
+} from '../dto/distribution-point';
+
+@ApiTags('DistributionPoints')
+@Controller('distribution-point')
+export class DistributionPointController {
+  constructor(private readonly service: DistributionPointService) {}
+
+  @Post()
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async create(
+    @Body() body: CreateDistributionPointDto,
+  ): Promise<DistributionPoint> {
+    return this.service.create(body);
+  }
+
+  @Get()
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async list(@Query() query: ListDistributionPointsDto) {
+    return this.service.list(query);
+  }
+
+  @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async findById(@Param('id') id: string): Promise<DistributionPoint> {
+    return this.service.findById(id);
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async update(
+    @Param('id') id: string,
+    @Body() body: UpdateDistributionPointDto,
+  ): Promise<DistributionPoint> {
+    return this.service.update(id, body);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async remove(@Param('id') id: string): Promise<{ ok: true }> {
+    return this.service.remove(id);
+  }
+}
