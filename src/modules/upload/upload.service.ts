@@ -7,8 +7,8 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
 import { User } from 'src/modules/auth/entities/auth.enity';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { Readable } from 'stream';
+import { DistributionPoint } from '../distribution-points/entities';
 
 dotenv.config();
 
@@ -22,8 +22,8 @@ export class UploadService {
     private readonly fileRepository: Repository<FileUploadEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(DistribuitionPoints)
-    private readonly distribuitionPointsRepository: Repository<DistribuitionPoints>,
+    @InjectRepository(DistributionPoint)
+    private readonly distribuitionPointsRepository: Repository<DistributionPoint>,
   ) {
     this.s3 = new S3Client({
       region: process.env.SPACES_REGION,
@@ -37,7 +37,11 @@ export class UploadService {
     this.bucket = process.env.SPACES_BUCKET;
   }
 
-  async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileUploadEntity> {
+  async uploadFile(
+    file: Express.Multer.File,
+    itemType: string,
+    itemId: string,
+  ): Promise<FileUploadEntity> {
     let item;
     if (itemType === 'user') {
       item = await this.userRepository.findOneBy({ id: itemId });
@@ -79,7 +83,7 @@ export class UploadService {
       url: fileUrl,
       ref: fileKey,
       type: file.mimetype,
-      [itemType]: item, 
+      [itemType]: item,
     });
 
     return this.fileRepository.save(newFile);

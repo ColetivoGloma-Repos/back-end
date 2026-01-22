@@ -7,7 +7,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
-import { PointRequestedProduct } from 'src/modules/distriuition-points/entities/point-requested-product.entity';
+import { PointRequestedProduct } from 'src/modules/distribution-points/entities';
 
 @Entity('products')
 export class Product {
@@ -15,10 +15,10 @@ export class Product {
   id!: string;
 
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 120 })
+  @Column({ type: 'varchar', length: 200 })
   slug!: string;
 
-  @Column({ type: 'varchar', length: 160 })
+  @Column({ type: 'varchar', length: 200 })
   name!: string;
 
   @Column({ type: 'varchar', length: 30, nullable: true })

@@ -7,14 +7,18 @@ import { FileEntity } from 'src/modules/company/entities/file.entity';
 import { NeedItem } from 'src/modules/need/entities/needItems.entity';
 import { NeedVolunteers } from 'src/modules/need/entities/needVolunteers.entity';
 import { EnvConfig } from 'src/config';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
-import { Products } from 'src/modules/products/entities/product.entity';
 import { Management } from 'src/modules/management/entities/management.entity';
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 import { PasswordResetToken } from 'src/modules/auth/entities/password-reset-token.entity';
 import { Notification } from 'src/modules/notifications/entities/notification.entity';
+import {
+  DistributionPoint,
+  Donation,
+  PointRequestedProduct,
+} from 'src/modules/distribution-points/entities';
+import { Product } from 'src/modules/products/entities/product.entity';
 
-export const dataSourceConfig = (): DataSourceOptions => { 
+export const dataSourceConfig = (): DataSourceOptions => {
   return {
     type: 'postgres',
     ...(EnvConfig.ENV === 'production'
@@ -37,14 +41,15 @@ export const dataSourceConfig = (): DataSourceOptions => {
           database: EnvConfig.database.NAME_DB,
           synchronize: true,
           ssl: false,
-         
         }),
     entities: [
       User,
       Address,
       Shelter,
-      DistribuitionPoints,
-      Products,
+      DistributionPoint,
+      PointRequestedProduct,
+      Donation,
+      Product,
       NeedItem,
       NeedVolunteers,
       Company,
@@ -52,7 +57,7 @@ export const dataSourceConfig = (): DataSourceOptions => {
       FileUploadEntity,
       Management,
       PasswordResetToken,
-      Notification
+      Notification,
     ],
   };
 };

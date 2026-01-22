@@ -3,7 +3,6 @@ import { User } from 'src/modules/auth/entities/auth.enity';
 import {
   Column,
   CreateDateColumn,
-  DeleteDateColumn,
   Entity,
   Index,
   JoinColumn,

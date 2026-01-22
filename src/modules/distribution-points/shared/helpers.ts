@@ -10,7 +10,15 @@ export const PointRequestedProductsMessagesHelper = {
 
 export const DistributionPointsMessagesHelper = {
   POINT_NOT_FOUND: 'Ponto de distribuição não encontrado.',
+  POINT_NOT_FOUND_AFTER_CREATION:
+    'Ponto de distribuição não encontrado após criação.',
   PRODUCT_ALREADY_REQUESTED: 'Este produto já está solicitado neste ponto.',
+  REPORT_ONE_PRODUCT: 'Informe ao menos 1 produto.',
+  INVALID_FIELD_IN_REQUESTED_PRODUCTS: (fieldName: string) =>
+    `${fieldName} inválido em produtos solicitados.`,
+  FIELD_IS_REQUIRED: (fieldName: string) =>
+    `O campo ${fieldName} é obrigatório.`,
+  FIELD_INVALID: (fieldName: string) => `O campo ${fieldName} é inválido.`,
 };
 
 export const DonationMessagesHelper = {

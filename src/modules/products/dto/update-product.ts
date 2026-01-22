@@ -3,7 +3,7 @@ import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 export class UpdateProductDto {
   @IsOptional()
   @IsString()
-  @MaxLength(160)
+  @MaxLength(200)
   name?: string;
 
   @IsOptional()
@@ -17,6 +17,6 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(120)
+  @MaxLength(200)
   slug?: string;
 }

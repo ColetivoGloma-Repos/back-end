@@ -1,8 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
-import { NotificationModule } from '../notifications/notification.module';
 import { DistributionPoint, PointRequestedProduct, Donation } from './entities';
 import {
   DistributionPointController,
@@ -22,9 +20,7 @@ import {
       PointRequestedProduct,
       Donation,
     ]),
-    forwardRef(() => AuthModule),
-    forwardRef(() => ProductsModule),
-    NotificationModule,
+    ProductsModule,
   ],
   providers: [
     DistributionPointService,

@@ -16,7 +16,7 @@ export class ProductsService {
     private readonly repository: Repository<Product>,
   ) {}
 
-  private normalizeSlug(value: string): string {
+  normalizeSlug(value: string): string {
     return value
       .trim()
       .toLowerCase()

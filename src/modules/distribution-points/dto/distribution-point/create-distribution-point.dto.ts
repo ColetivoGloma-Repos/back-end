@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -8,18 +8,18 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { CreateAddressDto } from 'src/modules/auth/dto/adress.dto';
 import { DistributionPointStatus } from '../../shared';
+import { CreateProductDto } from 'src/modules/products/dto';
 
-class CreateDistributionPointRequestedProductItemDto {
-  @ApiProperty({ example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890' })
-  @IsUUID()
-  @IsNotEmpty()
-  productId!: string;
-
-  @ApiProperty({ example: 100 })
+export class CreateRequestedProductDto extends OmitType(CreateProductDto, [
+  'active',
+] as const) {
+  @ApiProperty({ example: 100, minimum: 0 })
+  @Min(0)
   requestedQuantity!: number;
 }
 
@@ -61,13 +61,13 @@ export class CreateDistributionPointDto {
   address!: CreateAddressDto;
 
   @ApiProperty({
-    type: [CreateDistributionPointRequestedProductItemDto],
+    type: [CreateRequestedProductDto],
     example: [
       { productId: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890', requestedQty: 100 },
     ],
   })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateDistributionPointRequestedProductItemDto)
-  requestedProducts!: CreateDistributionPointRequestedProductItemDto[];
+  @Type(() => CreateRequestedProductDto)
+  requestedProducts!: CreateRequestedProductDto[];
 }

@@ -5,7 +5,7 @@ import { QueryRequest } from 'src/common/dto/query';
 export class ListProductsDto extends QueryRequest {
   @IsOptional()
   @IsString()
-  @MaxLength(160)
+  @MaxLength(200)
   q?: string;
 
   @IsOptional()
