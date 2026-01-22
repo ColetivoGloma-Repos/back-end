@@ -27,7 +27,7 @@ export class CreatePointRequestedProductDto {
 
   @ApiProperty({
     example: 100,
-    minimum: 0,
+    minimum: 1,
     description: 'Quantidade solicitada (inteiro maior ou igual a 0)',
   })
   @IsInt({
@@ -36,6 +36,8 @@ export class CreatePointRequestedProductDto {
       'integer',
     ),
   })
-  @Min(0, { message: CommonMessagesHelper.FIELD_INVALID('requestedQuantity') })
+  @Min(1, {
+    message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 1),
+  })
   requestedQuantity: number;
 }

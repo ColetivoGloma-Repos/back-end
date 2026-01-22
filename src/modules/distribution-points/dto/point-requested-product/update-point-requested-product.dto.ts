@@ -16,7 +16,7 @@ export class UpdatePointRequestedProductDto {
       'integer',
     ),
   })
-  @Min(0, { message: CommonMessagesHelper.FIELD_INVALID('requestedQuantity') })
+  @Min(0, { message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 0) })
   requestedQuantity?: number;
 
   @ApiPropertyOptional({

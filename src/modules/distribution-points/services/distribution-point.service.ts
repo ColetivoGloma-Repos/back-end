@@ -216,8 +216,8 @@ export class DistributionPointService {
     const queryBuilder = this.repository
       .createQueryBuilder('p')
       .leftJoinAndSelect('p.address', 'address')
-      .leftJoinAndSelect('p.requestedProducts', 'rp')
-      .leftJoinAndSelect('rp.product', 'product')
+      .leftJoin('p.requestedProducts', 'rp')
+      .leftJoin('rp.product', 'product')
       .take(limit)
       .skip(skip);
 
@@ -248,11 +248,13 @@ export class DistributionPointService {
     ]);
     const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
 
-    if (sortBy === 'municipio')
+    if (sortBy === 'municipio') {
       queryBuilder.orderBy('address.municipio', sortDir);
-    else if (sortBy === 'estado')
+    } else if (sortBy === 'estado') {
       queryBuilder.orderBy('address.estado', sortDir);
-    else queryBuilder.orderBy(`p.${sortBy}`, sortDir);
+    } else {
+      queryBuilder.orderBy(`p.${sortBy}`, sortDir);
+    }
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
@@ -270,14 +272,16 @@ export class DistributionPointService {
       where: { id },
       relations: {
         address: true,
-        requestedProducts: { product: true },
         files: true,
       },
     });
-    if (!point)
+
+    if (!point) {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
+    }
+
     return point;
   }
 

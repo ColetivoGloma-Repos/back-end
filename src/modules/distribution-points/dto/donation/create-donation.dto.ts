@@ -38,6 +38,6 @@ export class CreateDonationDto {
   @IsInt({
     message: CommonMessagesHelper.FIELD_INVALID_TYPE('quantity', 'integer'),
   })
-  @Min(1, { message: CommonMessagesHelper.FIELD_MIN_LENGTH('quantity', 1) })
+  @Min(1, { message: CommonMessagesHelper.NUMBER_MIN('quantity', 1) })
   quantity!: number;
 }

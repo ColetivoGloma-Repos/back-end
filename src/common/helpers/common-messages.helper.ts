@@ -13,4 +13,10 @@ export const CommonMessagesHelper = {
     `O campo "${fieldName}" deve ter entre ${min} e ${max} caracteres.`,
   FIELD_INVALID_ENUM: (fieldName: string) =>
     `O campo "${fieldName}" possui um valor inválido.`,
+  NUMBER_MIN: (fieldName: string, min: number) =>
+    `O campo "${fieldName}" deve ser no mínimo ${min}.`,
+  NUMBER_MAX: (fieldName: string, max: number) =>
+    `O campo "${fieldName}" deve ser no máximo ${max}.`,
+  NUMBER_BETWEEN: (fieldName: string, min: number, max: number) =>
+    `O campo "${fieldName}" deve estar entre ${min} e ${max}.`,
 };

@@ -131,26 +131,41 @@ export class DonationsService {
     const page = Math.floor(skip / limit) + 1;
 
     const queryBuilder = this.repository
-      .createQueryBuilder('d')
-      .leftJoinAndSelect('d.user', 'user')
-      .leftJoinAndSelect('d.requestedProduct', 'rp')
-      .leftJoinAndSelect('rp.product', 'product')
-      .leftJoinAndSelect('rp.point', 'point')
+      .createQueryBuilder('donation')
+      .leftJoinAndSelect('donation.user', 'user')
+      .leftJoin('donation.requestedProduct', 'requestedProduct')
+      .leftJoin('requestedProduct.product', 'product')
+      .leftJoin('requestedProduct.point', 'point')
+      .select(['donation', 'user.name', 'user.email'])
       .take(limit)
       .skip(skip);
 
-    if (query.pointId)
-      queryBuilder.andWhere('d.pointId = :pointId', { pointId: query.pointId });
-    if (query.userId)
-      queryBuilder.andWhere('d.userId = :userId', { userId: query.userId });
-    if (query.requestedProductId) {
-      queryBuilder.andWhere('d.requestedProductId = :requestedProductId', {
-        requestedProductId: query.requestedProductId,
+    if (query.pointId) {
+      queryBuilder.andWhere('donation.pointId = :pointId', {
+        pointId: query.pointId,
       });
     }
 
-    if (query.status)
-      queryBuilder.andWhere('d.status = :status', { status: query.status });
+    if (query.userId) {
+      queryBuilder.andWhere('donation.userId = :userId', {
+        userId: query.userId,
+      });
+    }
+
+    if (query.requestedProductId) {
+      queryBuilder.andWhere(
+        'donation.requestedProductId = :requestedProductId',
+        {
+          requestedProductId: query.requestedProductId,
+        },
+      );
+    }
+
+    if (query.status) {
+      queryBuilder.andWhere('donation.status = :status', {
+        status: query.status,
+      });
+    }
 
     if (query.q && query.q.trim()) {
       const q = query.q.trim();
@@ -176,11 +191,15 @@ export class DonationsService {
 
     const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
 
-    if (sortBy === 'productName') queryBuilder.orderBy('product.name', sortDir);
-    else if (sortBy === 'pointTitle')
+    if (sortBy === 'productName') {
+      queryBuilder.orderBy('product.name', sortDir);
+    } else if (sortBy === 'pointTitle') {
       queryBuilder.orderBy('point.title', sortDir);
-    else if (sortBy === 'userName') queryBuilder.orderBy('user.name', sortDir);
-    else queryBuilder.orderBy(`d.${sortBy}`, sortDir);
+    } else if (sortBy === 'userName') {
+      queryBuilder.orderBy('user.name', sortDir);
+    } else {
+      queryBuilder.orderBy(`donation.${sortBy}`, sortDir);
+    }
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
@@ -194,15 +213,17 @@ export class DonationsService {
   }
 
   async findById(id: string): Promise<Donation> {
-    const donation = await this.repository.findOne({
-      where: { id },
-      relations: {
-        user: true,
-        requestedProduct: { product: true, point: true },
-      },
-    });
-    if (!donation)
+    const donation = await this.repository
+      .createQueryBuilder('donation')
+      .leftJoin('donation.user', 'user')
+      .select(['donation', 'user.name', 'user.email'])
+      .where('donation.id = :id', { id })
+      .getOne();
+
+    if (!donation) {
       throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
+    }
+
     return donation;
   }
 

@@ -49,22 +49,17 @@ export class PointRequestedProductsService {
     const distributionPoint = await this.pointsRepository.findOne({
       where: { id: body.pointId },
     });
-    if (!distributionPoint)
+    if (!distributionPoint) {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
+    }
 
     const product = await this.productsRepository.findOne({
       where: { id: body.productId },
     });
-    if (!product)
+    if (!product) {
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
-
-    const requestedQuantity = Number(body.requestedQuantity ?? 0);
-    if (!Number.isFinite(requestedQuantity) || requestedQuantity < 0) {
-      throw new ConflictException(
-        PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
-      );
     }
 
     const existing = await this.repository.findOne({
@@ -78,7 +73,7 @@ export class PointRequestedProductsService {
         );
       }
 
-      const nextRequested = requestedQuantity;
+      const nextRequested = body.requestedQuantity;
       const nextDonated = Math.max(0, Number(existing.donatedQuantity ?? 0));
       existing.requestedQuantity = nextRequested;
       existing.donatedQuantity = nextDonated;
@@ -92,10 +87,10 @@ export class PointRequestedProductsService {
     const entity = this.repository.create({
       pointId: body.pointId,
       productId: body.productId,
-      requestedQuantity,
+      requestedQuantity: body.requestedQuantity,
       donatedQuantity: 0,
-      status: this.computeStatus(requestedQuantity, 0),
-      closesAt: requestedQuantity <= 0 ? new Date() : null,
+      status: this.computeStatus(body.requestedQuantity, 0),
+      closesAt: body.requestedQuantity <= 0 ? new Date() : null,
     });
 
     return this.repository.save(entity);
@@ -111,7 +106,7 @@ export class PointRequestedProductsService {
     const queryBuilder = this.repository
       .createQueryBuilder('r')
       .leftJoinAndSelect('r.product', 'product')
-      .leftJoinAndSelect('r.point', 'point')
+      .leftJoin('r.point', 'point')
       .take(limit)
       .skip(skip);
 
@@ -131,20 +126,27 @@ export class PointRequestedProductsService {
 
     const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
 
-    if (sortBy === 'productName') queryBuilder.orderBy('product.name', sortDir);
-    else if (sortBy === 'pointTitle')
+    if (sortBy === 'productName') {
+      queryBuilder.orderBy('product.name', sortDir);
+    } else if (sortBy === 'pointTitle') {
       queryBuilder.orderBy('point.title', sortDir);
-    else queryBuilder.orderBy(`r.${sortBy}`, sortDir);
+    } else {
+      queryBuilder.orderBy(`r.${sortBy}`, sortDir);
+    }
 
-    if (query.pointId)
+    if (query.pointId) {
       queryBuilder.andWhere('r.pointId = :pointId', { pointId: query.pointId });
-    if (query.productId)
+    }
+
+    if (query.productId) {
       queryBuilder.andWhere('r.productId = :productId', {
         productId: query.productId,
       });
+    }
 
-    if (query.status)
+    if (query.status) {
       queryBuilder.andWhere('r.status = :status', { status: query.status });
+    }
 
     if (query.activeOnly === true) {
       queryBuilder.andWhere('r.status IN (:...st)', {
@@ -173,12 +175,15 @@ export class PointRequestedProductsService {
   async findById(id: string): Promise<PointRequestedProduct> {
     const requestedPoint = await this.repository.findOne({
       where: { id },
-      relations: { product: true, point: true },
+      relations: { product: true },
     });
-    if (!requestedPoint)
+
+    if (!requestedPoint) {
       throw new NotFoundException(
         PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
       );
+    }
+
     return requestedPoint;
   }
 
@@ -193,13 +198,7 @@ export class PointRequestedProductsService {
       );
 
     if (body.requestedQuantity !== undefined) {
-      const requestedQuantity = Number(body.requestedQuantity);
-      if (!Number.isFinite(requestedQuantity) || requestedQuantity < 0) {
-        throw new ConflictException(
-          PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
-        );
-      }
-      requestedPoint.requestedQuantity = requestedQuantity;
+      requestedPoint.requestedQuantity = body.requestedQuantity;
     }
 
     if (body.productId) {
