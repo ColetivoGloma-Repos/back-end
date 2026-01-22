@@ -7,17 +7,21 @@ export class UpdateProductDto {
   @ApiPropertyOptional({ example: 'Arroz', maxLength: 200, nullable: true })
   @IsOptional()
   @TrimToUndefined()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('name', 'string') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('name', 'string'),
+  })
   @MaxLength(200, {
-    message: CommonMessagesHelper.FIELD_INVALID_LENGTH('name'),
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('name', 200),
   })
   name?: string;
 
   @ApiPropertyOptional({ example: 'kg', maxLength: 30, nullable: true })
   @IsOptional()
   @TrimToUndefined()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('unit', 'string') })
-  @MaxLength(30, { message: CommonMessagesHelper.FIELD_INVALID_LENGTH('unit') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('unit', 'string'),
+  })
+  @MaxLength(30, { message: CommonMessagesHelper.FIELD_MAX_LENGTH('unit', 30) })
   unit?: string | null;
 
   @ApiPropertyOptional({
@@ -28,7 +32,7 @@ export class UpdateProductDto {
   @IsOptional()
   @ToBoolean()
   @IsBoolean({
-    message: CommonMessagesHelper.FIELD_INVALID('active', 'boolean'),
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('active', 'boolean'),
   })
   active?: boolean;
 
@@ -40,9 +44,11 @@ export class UpdateProductDto {
   })
   @IsOptional()
   @TrimToUndefined()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('slug', 'string') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('slug', 'string'),
+  })
   @MaxLength(200, {
-    message: CommonMessagesHelper.FIELD_INVALID_LENGTH('slug'),
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('slug', 200),
   })
   slug?: string;
 }

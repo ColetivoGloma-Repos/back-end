@@ -1,5 +1,4 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsOptional,
@@ -8,40 +7,57 @@ import {
   MaxLength,
 } from 'class-validator';
 import { QueryRequest } from 'src/common/dto/query';
+import { CommonMessagesHelper } from 'src/common/helpers/common-messages.helper';
+import { ToBoolean, TrimToUndefined } from 'src/common/validation';
 
 export class ListDistributionPointsDto extends QueryRequest {
-  @ApiPropertyOptional({ example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab' })
+  @ApiPropertyOptional({
+    example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab',
+    format: 'uuid',
+    description: 'ID do proprietário',
+  })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('4', {
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('ownerId', 'uuid'),
+  })
   ownerId?: string;
 
-  @ApiPropertyOptional({ example: true })
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (value === true || value === false) return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return undefined;
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Filtro por ativo (true/false)',
   })
-  @IsBoolean()
+  @IsOptional()
+  @ToBoolean()
+  @IsBoolean({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('active', 'boolean'),
+  })
   active?: boolean;
 
-  @ApiPropertyOptional({ example: 'Salvador' })
+  @ApiPropertyOptional({
+    example: 'Salvador',
+    maxLength: 120,
+    description: 'Filtro por cidade',
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(120)
+  @TrimToUndefined()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('city', 'string'),
+  })
+  @MaxLength(120, {
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('city', 120),
+  })
   city?: string;
 
-  @ApiPropertyOptional({ example: 'BA' })
+  @ApiPropertyOptional({
+    example: 'BA',
+    maxLength: 2,
+    description: 'Filtro por UF (2 letras)',
+  })
   @IsOptional()
-  @IsString()
-  @MaxLength(2)
+  @TrimToUndefined()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('state', 'string'),
+  })
+  @MaxLength(2, { message: CommonMessagesHelper.FIELD_MAX_LENGTH('state', 2) })
   state?: string;
-
-  @ApiPropertyOptional({ example: 'central' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  q?: string;
 }

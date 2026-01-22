@@ -9,24 +9,41 @@ import {
 } from 'class-validator';
 import { UpdateAddressDto } from 'src/modules/auth/dto/update-adress.dto';
 import { DistributionPointStatus } from '../../shared';
+import { CommonMessagesHelper } from 'src/common/helpers';
+import { TrimToUndefined } from 'src/common/validation';
 
 export class UpdateDistributionPointDto {
   @ApiPropertyOptional({ example: 'Ponto Central Atualizado' })
   @IsOptional()
-  @IsString()
-  @MaxLength(180)
+  @TrimToUndefined()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('title', 'string'),
+  })
+  @MaxLength(180, {
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('title', 180),
+  })
   title?: string;
 
   @ApiPropertyOptional({ example: 'Descrição atualizada', nullable: true })
   @IsOptional()
-  @IsString()
-  @MaxLength(2000)
+  @TrimToUndefined()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('description', 'string'),
+  })
+  @MaxLength(2000, {
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('description', 2000),
+  })
   description?: string | null;
 
   @ApiPropertyOptional({ example: '+55 71 98888-8888' })
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
+  @TrimToUndefined()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('phone', 'string'),
+  })
+  @MaxLength(40, {
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('phone', 40),
+  })
   phone?: string;
 
   @ApiPropertyOptional({
@@ -34,12 +51,14 @@ export class UpdateDistributionPointDto {
     example: DistributionPointStatus.APPROVED,
   })
   @IsOptional()
-  @IsEnum(DistributionPointStatus)
+  @IsEnum(DistributionPointStatus, {
+    message: CommonMessagesHelper.FIELD_INVALID_ENUM('status'),
+  })
   status?: DistributionPointStatus;
 
   @ApiPropertyOptional({ type: UpdateAddressDto })
   @IsOptional()
-  @ValidateNested()
+  @ValidateNested({ message: CommonMessagesHelper.FIELD_INVALID('address') })
   @Type(() => UpdateAddressDto)
   address?: UpdateAddressDto;
 }

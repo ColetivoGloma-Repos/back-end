@@ -1,33 +1,42 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { QueryRequest } from 'src/common/dto/query';
 import { RequestedProductStatus } from '../../shared';
+import { CommonMessagesHelper } from 'src/common/helpers';
+import { ToBoolean } from 'src/common/validation';
 
 export class ListPointRequestedProductsDto extends QueryRequest {
-  @ApiPropertyOptional({ example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab' })
+  @ApiPropertyOptional({
+    example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab',
+    format: 'uuid',
+    description: 'ID do ponto',
+  })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('4', {
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('pointId', 'uuid'),
+  })
   pointId?: string;
 
-  @ApiPropertyOptional({ example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890' })
+  @ApiPropertyOptional({
+    example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890',
+    format: 'uuid',
+    description: 'ID do produto',
+  })
   @IsOptional()
-  @IsUUID()
+  @IsUUID('4', {
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('productId', 'uuid'),
+  })
   productId?: string;
 
   @ApiPropertyOptional({
     enum: RequestedProductStatus,
     example: RequestedProductStatus.OPEN,
+    description: 'Status do produto solicitado',
   })
   @IsOptional()
-  @IsEnum(RequestedProductStatus)
+  @IsEnum(RequestedProductStatus, {
+    message: CommonMessagesHelper.FIELD_INVALID_ENUM('status'),
+  })
   status?: RequestedProductStatus;
 
   @ApiPropertyOptional({
@@ -35,19 +44,9 @@ export class ListPointRequestedProductsDto extends QueryRequest {
     description: 'Quando true, retorna apenas OPEN e FULL',
   })
   @IsOptional()
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    if (value === true || value === false) return value;
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return undefined;
+  @ToBoolean()
+  @IsBoolean({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('activeOnly', 'boolean'),
   })
-  @IsBoolean()
   activeOnly?: boolean;
-
-  @ApiPropertyOptional({ example: 'arroz' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(160)
-  q?: string;
 }

@@ -13,17 +13,21 @@ export class CreateProductDto {
   @ApiProperty({ example: 'Arroz' })
   @IsNotEmpty({ message: CommonMessagesHelper.FIELD_IS_REQUIRED('name') })
   @Trim()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('name', 'string') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('name', 'string'),
+  })
   @MaxLength(200, {
-    message: CommonMessagesHelper.FIELD_INVALID_LENGTH('name'),
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('name', 200),
   })
   name!: string;
 
   @ApiPropertyOptional({ example: 'kg', nullable: true })
   @IsOptional()
   @TrimToUndefined()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('unit', 'string') })
-  @MaxLength(30, { message: CommonMessagesHelper.FIELD_INVALID_LENGTH('unit') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('unit', 'string'),
+  })
+  @MaxLength(30, { message: CommonMessagesHelper.FIELD_MAX_LENGTH('unit', 30) })
   unit?: string | null;
 
   @ApiPropertyOptional({
@@ -32,9 +36,11 @@ export class CreateProductDto {
   })
   @IsOptional()
   @TrimToUndefined()
-  @IsString({ message: CommonMessagesHelper.FIELD_INVALID('slug', 'string') })
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('slug', 'string'),
+  })
   @MaxLength(200, {
-    message: CommonMessagesHelper.FIELD_INVALID_LENGTH('slug'),
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('slug', 200),
   })
   slug?: string;
 
@@ -42,7 +48,7 @@ export class CreateProductDto {
   @IsOptional()
   @ToBoolean()
   @IsBoolean({
-    message: CommonMessagesHelper.FIELD_INVALID('active', 'boolean'),
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('active', 'boolean'),
   })
   active?: boolean;
 }
