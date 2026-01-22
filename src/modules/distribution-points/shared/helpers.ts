@@ -12,7 +12,10 @@ export const DistributionPointsMessagesHelper = {
   POINT_NOT_FOUND: 'Ponto de distribuição não encontrado.',
   POINT_NOT_FOUND_AFTER_CREATION:
     'Ponto de distribuição não encontrado após criação.',
-  PRODUCT_ALREADY_REQUESTED: 'Este produto já está solicitado neste ponto.',
+  PRODUCTS_ALREADY_REQUESTED: (names: string[]) => {
+    const list = names.join(', ');
+    return `Os seguintes produtos já estão cadastrados neste ponto: ${list}.`;
+  },
   REPORT_ONE_PRODUCT: 'Informe ao menos 1 produto.',
   INVALID_FIELD_IN_REQUESTED_PRODUCTS: (fieldName: string) =>
     `${fieldName} inválido em produtos solicitados.`,

@@ -31,7 +31,7 @@ export class PointRequestedProductsController {
   @UseGuards(AuthGuard('jwt'))
   async create(
     @Body() body: CreatePointRequestedProductDto,
-  ): Promise<PointRequestedProduct> {
+  ): Promise<PointRequestedProduct[]> {
     return this.pointRequestedProductsService.create(body);
   }
 

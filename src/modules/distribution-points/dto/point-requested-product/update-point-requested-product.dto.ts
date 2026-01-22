@@ -5,9 +5,9 @@ import { CommonMessagesHelper } from 'src/common/helpers';
 
 export class UpdatePointRequestedProductDto {
   @ApiPropertyOptional({
-    example: 150,
-    minimum: 0,
-    description: 'Quantidade solicitada (inteiro maior ou igual a 0)',
+    example: 100,
+    minimum: 1,
+    description: 'Quantidade solicitada (mínimo 1)',
   })
   @IsOptional()
   @IsInt({
@@ -16,7 +16,7 @@ export class UpdatePointRequestedProductDto {
       'integer',
     ),
   })
-  @Min(0, { message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 0) })
+  @Min(1, { message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 1) })
   requestedQuantity?: number;
 
   @ApiPropertyOptional({

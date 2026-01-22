@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -19,10 +19,13 @@ import {
   DistributionPointsMessagesHelper,
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
+import { ProductsService } from 'src/modules/products/products.service';
 
 @Injectable()
 export class PointRequestedProductsService {
   constructor(
+    private readonly dataSource: DataSource,
+
     @InjectRepository(PointRequestedProduct)
     private readonly repository: Repository<PointRequestedProduct>,
 
@@ -31,9 +34,11 @@ export class PointRequestedProductsService {
 
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
+
+    private readonly productsService: ProductsService,
   ) {}
 
-  private computeStatus(
+  computeStatus(
     requestedQuantity: number,
     donatedQuantity: number,
   ): RequestedProductStatus {
@@ -45,55 +50,168 @@ export class PointRequestedProductsService {
 
   async create(
     body: CreatePointRequestedProductDto,
-  ): Promise<PointRequestedProduct> {
+  ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.pointsRepository.findOne({
       where: { id: body.pointId },
     });
+
     if (!distributionPoint) {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
     }
 
-    const product = await this.productsRepository.findOne({
-      where: { id: body.productId },
-    });
-    if (!product) {
-      throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
+    const requestedProducts = Array.isArray(body.requestedProducts)
+      ? body.requestedProducts
+      : [];
+
+    if (!requestedProducts.length) {
+      throw new ConflictException(
+        DistributionPointsMessagesHelper.REPORT_ONE_PRODUCT,
+      );
     }
 
-    const existing = await this.repository.findOne({
-      where: { pointId: body.pointId, productId: body.productId },
-    });
+    return this.dataSource.transaction(async (transactionManager) => {
+      const requestedProductRepository = transactionManager.getRepository(
+        PointRequestedProduct,
+      );
+      const productsRepository = transactionManager.getRepository(Product);
 
-    if (existing) {
-      if (existing.status !== RequestedProductStatus.REMOVED) {
+      const normalized = requestedProducts.map((item) => {
+        const slug = this.productsService.normalizeSlug(item.slug || item.name);
+
+        return {
+          slug,
+          name: item.name,
+          unit: item.unit,
+          requestedQuantity: Number(item.requestedQuantity ?? 0),
+        };
+      });
+
+      const slugs = Array.from(new Set(normalized.map((x) => x.slug)));
+
+      const existingProducts = await productsRepository.find({
+        where: { slug: In(slugs) },
+      });
+
+      const productBySlug = new Map<string, Product>();
+      for (const product of existingProducts) {
+        productBySlug.set(product.slug, product);
+      }
+
+      const productsToCreate: Product[] = [];
+      for (const product of normalized) {
+        if (!productBySlug.has(product.slug)) {
+          productsToCreate.push(
+            productsRepository.create({
+              slug: product.slug,
+              name: product.name,
+              unit: product.unit,
+              active: true,
+            }),
+          );
+        }
+      }
+
+      if (productsToCreate.length) {
+        const created = await productsRepository.save(productsToCreate);
+        for (const product of created) {
+          productBySlug.set(product.slug, product);
+        }
+      }
+
+      const payloadByProductId = new Map<string, number>();
+
+      for (const item of normalized) {
+        const product = productBySlug.get(item.slug);
+        if (!product) continue;
+
+        const pid = product.id;
+
+        const current = payloadByProductId.get(pid);
+        if (current !== undefined) {
+          payloadByProductId.set(pid, current + item.requestedQuantity);
+        } else {
+          payloadByProductId.set(pid, item.requestedQuantity);
+        }
+      }
+
+      const productIds = Array.from(payloadByProductId.keys());
+
+      const existingRequested = productIds.length
+        ? await requestedProductRepository.find({
+            where: {
+              pointId: body.pointId,
+              productId: In(productIds),
+            },
+            relations: { product: true },
+          })
+        : [];
+
+      const existingByProductId = new Map<string, PointRequestedProduct>();
+      for (const prp of existingRequested) {
+        existingByProductId.set(prp.productId, prp);
+      }
+
+      const toSave: PointRequestedProduct[] = [];
+      const alreadyRequestedNames: string[] = [];
+
+      for (const [
+        productId,
+        requestedQuantity,
+      ] of payloadByProductId.entries()) {
+        const existing = existingByProductId.get(productId);
+
+        if (existing) {
+          if (existing.status !== RequestedProductStatus.REMOVED) {
+            alreadyRequestedNames.push(existing.product?.name ?? 'Produto');
+            continue;
+          }
+
+          const nextRequested = requestedQuantity;
+          const nextDonated = Math.max(
+            0,
+            Number(existing.donatedQuantity ?? 0),
+          );
+
+          const computedStatus = this.computeStatus(nextRequested, nextDonated);
+
+          existing.requestedQuantity = nextRequested;
+          existing.donatedQuantity = nextDonated;
+          existing.status = computedStatus;
+          existing.closesAt =
+            computedStatus === RequestedProductStatus.FULL ? new Date() : null;
+
+          toSave.push(existing);
+          continue;
+        }
+
+        const computedStatus = this.computeStatus(requestedQuantity, 0);
+
+        const entity = requestedProductRepository.create({
+          pointId: distributionPoint.id,
+          productId,
+          requestedQuantity,
+          donatedQuantity: 0,
+          status: computedStatus,
+          closesAt:
+            computedStatus === RequestedProductStatus.FULL ? new Date() : null,
+        });
+
+        toSave.push(entity);
+      }
+
+      if (alreadyRequestedNames.length) {
+        const uniqueNames = Array.from(new Set(alreadyRequestedNames));
         throw new ConflictException(
-          DistributionPointsMessagesHelper.PRODUCT_ALREADY_REQUESTED,
+          DistributionPointsMessagesHelper.PRODUCTS_ALREADY_REQUESTED(
+            uniqueNames,
+          ),
         );
       }
 
-      const nextRequested = body.requestedQuantity;
-      const nextDonated = Math.max(0, Number(existing.donatedQuantity ?? 0));
-      existing.requestedQuantity = nextRequested;
-      existing.donatedQuantity = nextDonated;
-      existing.status = this.computeStatus(nextRequested, nextDonated);
-      existing.closesAt =
-        existing.status === RequestedProductStatus.FULL ? new Date() : null;
-
-      return this.repository.save(existing);
-    }
-
-    const entity = this.repository.create({
-      pointId: body.pointId,
-      productId: body.productId,
-      requestedQuantity: body.requestedQuantity,
-      donatedQuantity: 0,
-      status: this.computeStatus(body.requestedQuantity, 0),
-      closesAt: body.requestedQuantity <= 0 ? new Date() : null,
+      return requestedProductRepository.save(toSave);
     });
-
-    return this.repository.save(entity);
   }
 
   async list(query: ListPointRequestedProductsDto) {

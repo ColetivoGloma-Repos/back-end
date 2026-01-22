@@ -17,6 +17,7 @@ import {
 } from '../dto/distribution-point';
 import { DistributionPointsMessagesHelper } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
+import { PointRequestedProductsService } from './point-requested-product.service';
 
 @Injectable()
 export class DistributionPointService {
@@ -27,50 +28,20 @@ export class DistributionPointService {
     private readonly repository: Repository<DistributionPoint>,
 
     private readonly productsService: ProductsService,
+
+    private readonly requestedProductService: PointRequestedProductsService,
   ) {}
 
-  private computeRequestedStatus(
-    requestedQuantity: number,
-    donatedQty: number,
-  ): RequestedProductStatus {
-    if (requestedQuantity <= 0) return RequestedProductStatus.FULL;
-    if (donatedQty >= requestedQuantity) return RequestedProductStatus.FULL;
-    return RequestedProductStatus.OPEN;
-  }
-
   async create(body: CreateDistributionPointDto): Promise<DistributionPoint> {
-    const title = (body.title ?? '').trim();
-    if (!title)
-      throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('title'),
-      );
-
-    const phone = (body.phone ?? '').trim();
-    if (!phone)
-      throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('phone'),
-      );
-
-    const ownerId = (body.ownerId ?? '').trim();
-    if (!ownerId)
-      throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('ownerId'),
-      );
-
-    const address = body.address;
-    if (!address)
-      throw new ConflictException(
-        DistributionPointsMessagesHelper.FIELD_IS_REQUIRED('address'),
-      );
-
     const requestedProducts = Array.isArray(body.requestedProducts)
       ? body.requestedProducts
       : [];
 
-    if (!requestedProducts.length)
+    if (!requestedProducts.length) {
       throw new ConflictException(
         DistributionPointsMessagesHelper.REPORT_ONE_PRODUCT,
       );
+    }
 
     return this.dataSource.transaction(async (transactionManager) => {
       const distributionPointRepository =
@@ -81,47 +52,7 @@ export class DistributionPointService {
       const productsRepository = transactionManager.getRepository(Product);
       const addressRepository = transactionManager.getRepository(Address);
 
-      for (const item of requestedProducts) {
-        const name = String(item?.name ?? '').trim();
-        if (!name) {
-          throw new ConflictException(
-            DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'name',
-            ),
-          );
-        }
-
-        const quantity = Number(item?.requestedQuantity ?? 0);
-        if (!Number.isFinite(quantity) || quantity < 0) {
-          throw new ConflictException(
-            DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'requestedQuantity',
-            ),
-          );
-        }
-
-        const slug = String(item?.slug ?? '').trim();
-        if (slug && slug.length > 200) {
-          throw new ConflictException(
-            DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'slug',
-            ),
-          );
-        }
-
-        const unit = item?.unit === undefined ? undefined : (item.unit ?? null);
-        if (
-          unit !== undefined &&
-          unit !== null &&
-          String(unit).trim().length > 30
-        ) {
-          throw new ConflictException(
-            DistributionPointsMessagesHelper.INVALID_FIELD_IN_REQUESTED_PRODUCTS(
-              'unit',
-            ),
-          );
-        }
-      }
+      const address = body.address;
 
       const savedAddress = await addressRepository.save(
         addressRepository.create({
@@ -139,10 +70,10 @@ export class DistributionPointService {
       );
 
       const distributionPoint = distributionPointRepository.create({
-        title,
+        title: body.title,
         description: body.description ?? null,
-        phone,
-        ownerId,
+        phone: body.phone,
+        ownerId: body.ownerId,
         status: body.status ?? DistributionPointStatus.PENDING,
         address: savedAddress,
       });
@@ -150,49 +81,46 @@ export class DistributionPointService {
       const savedDistributionPoint =
         await distributionPointRepository.save(distributionPoint);
 
-      const toInsert: PointRequestedProduct[] = [];
+      const toSave: PointRequestedProduct[] = [];
 
       for (const item of requestedProducts) {
-        const name = String(item.name).trim();
-        const quantity = Number(item.requestedQuantity ?? 0);
-        const unit = item.unit === undefined ? null : (item.unit ?? null);
-
-        const slug =
-          String(item.slug ?? '').trim() ||
-          this.productsService.normalizeSlug(name);
+        const slug = this.productsService.normalizeSlug(item.slug || item.name);
 
         let product = await productsRepository.findOne({ where: { slug } });
 
         if (!product) {
           product = await productsRepository.save(
             productsRepository.create({
-              name,
-              unit,
+              name: item.name,
+              unit: item.unit,
               slug,
               active: true,
             }),
           );
         }
 
+        const computeStatus = this.requestedProductService.computeStatus;
+        const computedStatus = computeStatus(item.requestedQuantity, 0);
+
         const entity = pointRequestedProductRepository.create({
           point: { id: savedDistributionPoint.id },
           product: { id: product.id },
-          requestedQuantity: quantity,
+          requestedQuantity: item.requestedQuantity,
           donatedQuantity: 0,
-          status: this.computeRequestedStatus(quantity, 0),
-          closesAt: quantity <= 0 ? new Date() : null,
+          status: computedStatus,
+          closesAt:
+            computedStatus === RequestedProductStatus.FULL ? new Date() : null,
         });
 
-        toInsert.push(entity);
+        toSave.push(entity);
       }
 
-      await pointRequestedProductRepository.save(toInsert);
+      await pointRequestedProductRepository.save(toSave);
 
       const full = await distributionPointRepository.findOne({
         where: { id: savedDistributionPoint.id },
         relations: {
           address: true,
-          requestedProducts: { product: true },
           files: true,
         },
       });
@@ -289,62 +217,57 @@ export class DistributionPointService {
     id: string,
     body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    const point = await this.repository.findOne({
+    const distributionPoint = await this.repository.findOne({
       where: { id },
       relations: { address: true },
     });
-    if (!point)
+    if (!distributionPoint)
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
 
     if (body.title !== undefined) {
-      const title = String(body.title ?? '').trim();
-      if (!title)
-        throw new ConflictException(
-          DistributionPointsMessagesHelper.FIELD_INVALID('title'),
-        );
-      point.title = title;
+      distributionPoint.title = body.title;
     }
 
     if (body.description !== undefined)
-      point.description = body.description ?? null;
+      distributionPoint.description = body.description ?? null;
 
     if (body.phone !== undefined) {
-      const phone = String(body.phone ?? '').trim();
-      if (!phone)
-        throw new ConflictException(
-          DistributionPointsMessagesHelper.FIELD_INVALID('phone'),
-        );
-      point.phone = phone;
+      distributionPoint.phone = body.phone;
     }
 
     if (body.status !== undefined) {
-      point.status = body.status as DistributionPointStatus;
+      distributionPoint.status = body.status;
     }
 
     if (body.address !== undefined && body.address) {
       const address = body.address;
 
-      if (!point.address) {
-        point.address = new Address();
+      if (!distributionPoint.address) {
+        distributionPoint.address = new Address();
       }
 
-      if (address.cep !== undefined) point.address.cep = address.cep;
-      if (address.estado !== undefined) point.address.estado = address.estado;
-      if (address.pais !== undefined) point.address.pais = address.pais;
+      if (address.cep !== undefined)
+        distributionPoint.address.cep = address.cep;
+      if (address.estado !== undefined)
+        distributionPoint.address.estado = address.estado;
+      if (address.pais !== undefined)
+        distributionPoint.address.pais = address.pais;
       if (address.municipio !== undefined)
-        point.address.municipio = address.municipio;
-      if (address.bairro !== undefined) point.address.bairro = address.bairro;
+        distributionPoint.address.municipio = address.municipio;
+      if (address.bairro !== undefined)
+        distributionPoint.address.bairro = address.bairro;
       if (address.logradouro !== undefined)
-        point.address.logradouro = address.logradouro;
-      if (address.numero !== undefined) point.address.numero = address.numero;
+        distributionPoint.address.logradouro = address.logradouro;
+      if (address.numero !== undefined)
+        distributionPoint.address.numero = address.numero;
       if (address.complemento !== undefined)
-        point.address.complemento = address.complemento ?? null;
+        distributionPoint.address.complemento = address.complemento ?? null;
       if (address.latitude !== undefined)
-        point.address.latitude = address.latitude ?? null;
+        distributionPoint.address.latitude = address.latitude ?? null;
       if (address.longitude !== undefined)
-        point.address.longitude = address.longitude ?? null;
+        distributionPoint.address.longitude = address.longitude ?? null;
     }
 
     return this.dataSource.transaction(async (transactionManager) => {
@@ -352,14 +275,14 @@ export class DistributionPointService {
         transactionManager.getRepository(DistributionPoint);
       const addressRepository = transactionManager.getRepository(Address);
 
-      if (point.address) {
-        await addressRepository.save(point.address);
+      if (distributionPoint.address) {
+        await addressRepository.save(distributionPoint.address);
       }
 
-      await distributionPointRepository.save(point);
+      await distributionPointRepository.save(distributionPoint);
 
       const full = await distributionPointRepository.findOne({
-        where: { id: point.id },
+        where: { id: distributionPoint.id },
         relations: {
           address: true,
           requestedProducts: { product: true },
@@ -376,8 +299,8 @@ export class DistributionPointService {
   }
 
   async remove(id: string): Promise<{ ok: true }> {
-    const point = await this.repository.findOne({ where: { id } });
-    if (!point)
+    const distributionPoint = await this.repository.findOne({ where: { id } });
+    if (!distributionPoint)
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );

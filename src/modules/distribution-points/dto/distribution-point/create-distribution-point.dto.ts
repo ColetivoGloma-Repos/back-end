@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -8,28 +8,13 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  Min,
   ValidateNested,
 } from 'class-validator';
 import { CreateAddressDto } from 'src/modules/auth/dto/adress.dto';
 import { DistributionPointStatus } from '../../shared';
-import { CreateProductDto } from 'src/modules/products/dto';
 import { CommonMessagesHelper } from 'src/common/helpers';
 import { TrimToUndefined } from 'src/common/validation';
-
-export class CreateRequestedProductDto extends OmitType(CreateProductDto, [
-  'active',
-] as const) {
-  @ApiProperty({
-    example: 100,
-    minimum: 0,
-    description: 'Quantidade solicitada (mínimo 0)',
-  })
-  @Min(0, {
-    message: CommonMessagesHelper.FIELD_MIN_LENGTH('requestedQuantity', 0),
-  })
-  requestedQuantity!: number;
-}
+import { CreateRequestedProductDto } from '../point-requested-product';
 
 export class CreateDistributionPointDto {
   @ApiProperty({ example: 'Ponto Central' })

@@ -1,6 +1,35 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsUUID, Min } from 'class-validator';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { CommonMessagesHelper } from 'src/common/helpers';
+import { CreateProductDto } from 'src/modules/products/dto';
+
+export class CreateRequestedProductDto extends OmitType(CreateProductDto, [
+  'active',
+] as const) {
+  @ApiProperty({
+    example: 100,
+    minimum: 1,
+    description: 'Quantidade solicitada (mínimo 1)',
+  })
+  @IsInt({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE(
+      'requestedQuantity',
+      'integer',
+    ),
+  })
+  @Min(1, {
+    message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 1),
+  })
+  requestedQuantity!: number;
+}
 
 export class CreatePointRequestedProductDto {
   @ApiProperty({
@@ -15,29 +44,21 @@ export class CreatePointRequestedProductDto {
   pointId: string;
 
   @ApiProperty({
-    example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890',
-    format: 'uuid',
-    description: 'ID do produto',
+    type: [CreateRequestedProductDto],
+    example: [
+      {
+        productId: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890',
+        requestedQuantity: 100,
+      },
+    ],
   })
-  @IsNotEmpty({ message: CommonMessagesHelper.FIELD_IS_REQUIRED('productId') })
-  @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('productId', 'uuid'),
-  })
-  productId: string;
-
-  @ApiProperty({
-    example: 100,
-    minimum: 1,
-    description: 'Quantidade solicitada (inteiro maior ou igual a 0)',
-  })
-  @IsInt({
+  @IsArray({
     message: CommonMessagesHelper.FIELD_INVALID_TYPE(
-      'requestedQuantity',
-      'integer',
+      'requestedProducts',
+      'array',
     ),
   })
-  @Min(1, {
-    message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 1),
-  })
-  requestedQuantity: number;
+  @ValidateNested({ each: true })
+  @Type(() => CreateRequestedProductDto)
+  requestedProducts!: CreateRequestedProductDto[];
 }
