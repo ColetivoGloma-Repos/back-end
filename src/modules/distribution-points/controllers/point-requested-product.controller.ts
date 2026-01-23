@@ -19,15 +19,15 @@ import {
   UpdatePointRequestedProductDto,
 } from '../dto/point-requested-product';
 
-@ApiTags('PointRequestedProducts')
-@Controller('point-requested-products')
+@ApiTags('DistributionPointRequestedProducts')
+@Controller('distribution-point/requested-products')
 export class PointRequestedProductsController {
   constructor(
     private readonly pointRequestedProductsService: PointRequestedProductsService,
   ) {}
 
   @Post()
-  @ApiBearerAuth() 
+  @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async create(
     @Body() body: CreatePointRequestedProductDto,

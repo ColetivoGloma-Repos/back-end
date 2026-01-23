@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -19,7 +20,7 @@ import {
   UpdateDistributionPointDto,
 } from '../dto/distribution-point';
 
-@ApiTags('DistributionPoints')
+@ApiTags('DistributionPoint')
 @Controller('distribution-point')
 export class DistributionPointController {
   constructor(private readonly service: DistributionPointService) {}
@@ -40,27 +41,31 @@ export class DistributionPointController {
     return this.service.list(query);
   }
 
-  @Get(':id')
+  @Get(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async findById(@Param('id') id: string): Promise<DistributionPoint> {
+  async findById(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<DistributionPoint> {
     return this.service.findById(id);
   }
 
-  @Patch(':id')
+  @Patch(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
     return this.service.update(id, body);
   }
 
-  @Delete(':id')
+  @Delete(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async remove(@Param('id') id: string): Promise<{ ok: true }> {
+  async remove(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<{ ok: true }> {
     return this.service.remove(id);
   }
 }

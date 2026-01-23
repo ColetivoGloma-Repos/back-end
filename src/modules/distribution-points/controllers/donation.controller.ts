@@ -19,8 +19,8 @@ import {
 } from '../dto/donation';
 import { Donation } from '../entities/donation.entity';
 
-@ApiTags('Donations')
-@Controller('donation')
+@ApiTags('DistributionPointDonations')
+@Controller('/distribution-point/donations')
 export class DonationController {
   constructor(private readonly donationsService: DonationsService) {}
 
