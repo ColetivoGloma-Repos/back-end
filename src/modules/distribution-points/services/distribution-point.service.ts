@@ -142,22 +142,22 @@ export class DistributionPointService {
     const page = Math.floor(skip / limit) + 1;
 
     const queryBuilder = this.repository
-      .createQueryBuilder('p')
-      .leftJoinAndSelect('p.address', 'address')
-      .leftJoin('p.requestedProducts', 'rp')
+      .createQueryBuilder('distributionPoint')
+      .leftJoinAndSelect('distributionPoint.address', 'address')
+      .leftJoin('distributionPoint.requestedProducts', 'rp')
       .leftJoin('rp.product', 'product')
       .take(limit)
       .skip(skip);
 
     if (query.ownerId)
-      queryBuilder.andWhere('p.ownerId = :ownerId', {
+      queryBuilder.andWhere('distributionPoint.ownerId = :ownerId', {
         ownerId: query.ownerId,
       });
 
     if (query.q && String(query.q).trim()) {
       const q = String(query.q).trim();
       queryBuilder.andWhere(
-        '(p.title ILIKE :q OR p.description ILIKE :q OR p.phone ILIKE :q OR address.municipio ILIKE :q OR address.bairro ILIKE :q OR address.logradouro ILIKE :q)',
+        '(distributionPoint.title ILIKE :q OR distributionPoint.description ILIKE :q OR distributionPoint.phone ILIKE :q OR address.municipio ILIKE :q OR address.bairro ILIKE :q OR address.logradouro ILIKE :q)',
         { q: `%${q}%` },
       );
     }
@@ -181,7 +181,7 @@ export class DistributionPointService {
     } else if (sortBy === 'estado') {
       queryBuilder.orderBy('address.estado', sortDir);
     } else {
-      queryBuilder.orderBy(`p.${sortBy}`, sortDir);
+      queryBuilder.orderBy(`distributionPoint.${sortBy}`, sortDir);
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();

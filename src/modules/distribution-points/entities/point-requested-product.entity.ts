@@ -25,9 +25,13 @@ export class PointRequestedProduct {
   @Column({ type: 'uuid' })
   distributionPointId!: string;
 
-  @ManyToOne(() => DistributionPoint, (p) => p.requestedProducts, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => DistributionPoint,
+    (distributionPoint) => distributionPoint.requestedProducts,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'distributionPointId' })
   point!: DistributionPoint;
 
