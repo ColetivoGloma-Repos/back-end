@@ -13,9 +13,12 @@ export class ListPointRequestedProductsDto extends QueryRequest {
   })
   @IsOptional()
   @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('pointId', 'uuid'),
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE(
+      'distributionPointId',
+      'uuid',
+    ),
   })
-  pointId?: string;
+  distributionPointId?: string;
 
   @ApiPropertyOptional({
     example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890',

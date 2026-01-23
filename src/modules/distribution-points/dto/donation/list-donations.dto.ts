@@ -12,9 +12,12 @@ export class ListDonationsDto extends QueryRequest {
   })
   @IsOptional()
   @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('pointId', 'uuid'),
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE(
+      'distributionPointId',
+      'uuid',
+    ),
   })
-  pointId?: string;
+  distributionPointId?: string;
 
   @ApiPropertyOptional({
     example: 'b2a3c4d5-e6f7-4890-8123-4567890abcde',

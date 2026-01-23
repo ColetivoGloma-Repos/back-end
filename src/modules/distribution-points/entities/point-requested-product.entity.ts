@@ -16,19 +16,19 @@ import { Product } from 'src/modules/products/entities/product.entity';
 import { RequestedProductStatus } from '../shared';
 
 @Entity('point_requested_products')
-@Unique('uq_point_product_active', ['pointId', 'productId'])
+@Unique('uq_point_product_active', ['distributionPointId', 'productId'])
 export class PointRequestedProduct {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Index()
   @Column({ type: 'uuid' })
-  pointId!: string;
+  distributionPointId!: string;
 
   @ManyToOne(() => DistributionPoint, (p) => p.requestedProducts, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'pointId' })
+  @JoinColumn({ name: 'distributionPointId' })
   point!: DistributionPoint;
 
   @Index()
@@ -57,7 +57,7 @@ export class PointRequestedProduct {
   @Column({ type: 'timestamptz', nullable: true })
   closesAt!: Date | null;
 
-  @OneToMany(() => Donation, (d) => d.requestedProduct)
+  @OneToMany(() => Donation, (donation) => donation.requestedProduct)
   donations!: Donation[];
 
   @CreateDateColumn({ type: 'timestamptz' })

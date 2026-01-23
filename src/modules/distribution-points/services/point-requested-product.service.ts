@@ -52,7 +52,7 @@ export class PointRequestedProductsService {
     body: CreatePointRequestedProductDto,
   ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.pointsRepository.findOne({
-      where: { id: body.pointId },
+      where: { id: body.distributionPointId },
     });
 
     if (!distributionPoint) {
@@ -126,13 +126,13 @@ export class PointRequestedProductsService {
         const product = productBySlug.get(item.slug);
         if (!product) continue;
 
-        const pid = product.id;
+        const productId = product.id;
 
-        const current = payloadByProductId.get(pid);
+        const current = payloadByProductId.get(productId);
         if (current !== undefined) {
-          payloadByProductId.set(pid, current + item.requestedQuantity);
+          payloadByProductId.set(productId, current + item.requestedQuantity);
         } else {
-          payloadByProductId.set(pid, item.requestedQuantity);
+          payloadByProductId.set(productId, item.requestedQuantity);
         }
       }
 
@@ -141,7 +141,7 @@ export class PointRequestedProductsService {
       const existingRequested = productIds.length
         ? await requestedProductRepository.find({
             where: {
-              pointId: body.pointId,
+              distributionPointId: body.distributionPointId,
               productId: In(productIds),
             },
             relations: { product: true },
@@ -149,8 +149,8 @@ export class PointRequestedProductsService {
         : [];
 
       const existingByProductId = new Map<string, PointRequestedProduct>();
-      for (const prp of existingRequested) {
-        existingByProductId.set(prp.productId, prp);
+      for (const requestedProduct of existingRequested) {
+        existingByProductId.set(requestedProduct.productId, requestedProduct);
       }
 
       const toSave: PointRequestedProduct[] = [];
@@ -189,7 +189,7 @@ export class PointRequestedProductsService {
         const computedStatus = this.computeStatus(requestedQuantity, 0);
 
         const entity = requestedProductRepository.create({
-          pointId: distributionPoint.id,
+          distributionPointId: distributionPoint.id,
           productId,
           requestedQuantity,
           donatedQuantity: 0,
@@ -222,9 +222,9 @@ export class PointRequestedProductsService {
     const page = Math.floor(skip / limit) + 1;
 
     const queryBuilder = this.repository
-      .createQueryBuilder('r')
-      .leftJoinAndSelect('r.product', 'product')
-      .leftJoin('r.point', 'point')
+      .createQueryBuilder('requestedProduct')
+      .leftJoinAndSelect('requestedProduct.product', 'product')
+      .leftJoin('requestedProduct.point', 'point')
       .take(limit)
       .skip(skip);
 
@@ -249,25 +249,32 @@ export class PointRequestedProductsService {
     } else if (sortBy === 'pointTitle') {
       queryBuilder.orderBy('point.title', sortDir);
     } else {
-      queryBuilder.orderBy(`r.${sortBy}`, sortDir);
+      queryBuilder.orderBy(`requestedProduct.${sortBy}`, sortDir);
     }
 
-    if (query.pointId) {
-      queryBuilder.andWhere('r.pointId = :pointId', { pointId: query.pointId });
+    if (query.distributionPointId) {
+      queryBuilder.andWhere(
+        'requestedProduct.distributionPointId = :distributionPointId',
+        {
+          distributionPointId: query.distributionPointId,
+        },
+      );
     }
 
     if (query.productId) {
-      queryBuilder.andWhere('r.productId = :productId', {
+      queryBuilder.andWhere('requestedProduct.productId = :productId', {
         productId: query.productId,
       });
     }
 
     if (query.status) {
-      queryBuilder.andWhere('r.status = :status', { status: query.status });
+      queryBuilder.andWhere('requestedProduct.status = :status', {
+        status: query.status,
+      });
     }
 
     if (query.activeOnly === true) {
-      queryBuilder.andWhere('r.status IN (:...st)', {
+      queryBuilder.andWhere('requestedProduct.status IN (:...st)', {
         st: [RequestedProductStatus.OPEN, RequestedProductStatus.FULL],
       });
     }

@@ -90,6 +90,6 @@ export class User {
   @OneToMany(() => FileUploadEntity, (file) => file.user)
   files: FileUploadEntity[];
 
-  @OneToMany(() => Donation, (d) => d.user)
+  @OneToMany(() => Donation, (donation) => donation.user)
   donations!: Donation[];
 }

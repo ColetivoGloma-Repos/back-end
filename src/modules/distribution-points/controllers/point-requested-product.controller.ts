@@ -27,7 +27,7 @@ export class PointRequestedProductsController {
   ) {}
 
   @Post()
-  @ApiBearerAuth()
+  @ApiBearerAuth() 
   @UseGuards(AuthGuard('jwt'))
   async create(
     @Body() body: CreatePointRequestedProductDto,

@@ -37,11 +37,16 @@ export class CreatePointRequestedProductDto {
     format: 'uuid',
     description: 'ID do ponto',
   })
-  @IsNotEmpty({ message: CommonMessagesHelper.FIELD_IS_REQUIRED('pointId') })
-  @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('pointId', 'uuid'),
+  @IsNotEmpty({
+    message: CommonMessagesHelper.FIELD_IS_REQUIRED('distributionPointId'),
   })
-  pointId: string;
+  @IsUUID('4', {
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE(
+      'distributionPointId',
+      'uuid',
+    ),
+  })
+  distributionPointId: string;
 
   @ApiProperty({
     type: [CreateRequestedProductDto],

@@ -54,15 +54,15 @@ export class DonationsService {
     if (!user) throw new NotFoundException('Usuário não encontrado.');
 
     return this.dataSource.transaction(async (transactionManager) => {
-      const requestedPointRepository = transactionManager.getRepository(
+      const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
       const donationRepository = transactionManager.getRepository(Donation);
 
-      const req = await requestedPointRepository
-        .createQueryBuilder('r')
+      const req = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
         .setLock('pessimistic_write')
-        .where('r.id = :id', { id: body.requestedProductId })
+        .where('requestedProduct.id = :id', { id: body.requestedProductId })
         .getOne();
 
       if (!req)
@@ -83,7 +83,7 @@ export class DonationsService {
       if (remaining <= 0) {
         req.status = RequestedProductStatus.FULL;
         req.closesAt = req.closesAt ?? new Date();
-        await requestedPointRepository.save(req);
+        await requestedProductRepository.save(req);
         throw new ConflictException(
           PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
         );
@@ -100,7 +100,7 @@ export class DonationsService {
       const donation = donationRepository.create({
         userId: body.userId,
         requestedProductId: body.requestedProductId,
-        pointId: req.pointId,
+        distributionPointId: req.distributionPointId,
         quantity,
         status: DonationStatus.ACTIVE,
       });
@@ -117,7 +117,7 @@ export class DonationsService {
           ? (req.closesAt ?? new Date())
           : null;
 
-      await requestedPointRepository.save(req);
+      await requestedProductRepository.save(req);
 
       return saved;
     });
@@ -140,10 +140,13 @@ export class DonationsService {
       .take(limit)
       .skip(skip);
 
-    if (query.pointId) {
-      queryBuilder.andWhere('donation.pointId = :pointId', {
-        pointId: query.pointId,
-      });
+    if (query.distributionPointId) {
+      queryBuilder.andWhere(
+        'donation.distributionPointId = :distributionPointId',
+        {
+          distributionPointId: query.distributionPointId,
+        },
+      );
     }
 
     if (query.userId) {
@@ -241,7 +244,7 @@ export class DonationsService {
 
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
-      const requestedPointRepository = transactionManager.getRepository(
+      const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
 
@@ -258,10 +261,10 @@ export class DonationsService {
       const currentQuantity = Number(donation.quantity ?? 0);
       if (nextQuantity === currentQuantity) return donation;
 
-      const req = await requestedPointRepository
-        .createQueryBuilder('r')
+      const req = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
         .setLock('pessimistic_write')
-        .where('r.id = :id', { id: donation.requestedProductId })
+        .where('requestedProduct.id = :id', { id: donation.requestedProductId })
         .getOne();
 
       if (!req)
@@ -285,7 +288,7 @@ export class DonationsService {
         if (remaining <= 0) {
           req.status = RequestedProductStatus.FULL;
           req.closesAt = req.closesAt ?? new Date();
-          await requestedPointRepository.save(req);
+          await requestedProductRepository.save(req);
           throw new ConflictException(
             PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
           );
@@ -312,7 +315,7 @@ export class DonationsService {
             ? (req.closesAt ?? new Date())
             : null;
 
-        await requestedPointRepository.save(req);
+        await requestedProductRepository.save(req);
 
         return savedDonation;
       }
@@ -335,7 +338,7 @@ export class DonationsService {
           ? (req.closesAt ?? new Date())
           : null;
 
-      await requestedPointRepository.save(req);
+      await requestedProductRepository.save(req);
 
       return savedDonation;
     });
@@ -344,27 +347,31 @@ export class DonationsService {
   async cancel(id: string): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
-      const requestedPointRepository = transactionManager.getRepository(
+      const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
 
       const donation = await donationRepository.findOne({
         where: { id },
       });
-      if (!donation)
+      if (!donation) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
-      if (donation.status !== DonationStatus.ACTIVE) return { ok: true };
+      }
+      if (donation.status !== DonationStatus.ACTIVE) {
+        return { ok: true };
+      }
 
-      const request = await requestedPointRepository
-        .createQueryBuilder('r')
+      const request = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
         .setLock('pessimistic_write')
-        .where('r.id = :id', { id: donation.requestedProductId })
+        .where('requestedProduct.id = :id', { id: donation.requestedProductId })
         .getOne();
 
-      if (!request)
+      if (!request) {
         throw new NotFoundException(
           PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
         );
+      }
 
       const requestedQuantity = Number(request.requestedQuantity ?? 0);
       const donatedQuantity = Number(request.donatedQuantity ?? 0);
@@ -386,7 +393,7 @@ export class DonationsService {
           ? (request.closesAt ?? new Date())
           : null;
 
-      await requestedPointRepository.save(request);
+      await requestedProductRepository.save(request);
 
       return { ok: true };
     });

@@ -41,7 +41,7 @@ export class Donation {
 
   @Index()
   @Column({ type: 'uuid' })
-  pointId!: string;
+  distributionPointId!: string;
 
   @Column({ type: 'int' })
   quantity!: number;
