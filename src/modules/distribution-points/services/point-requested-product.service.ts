@@ -272,6 +272,10 @@ export class PointRequestedProductsService {
       queryBuilder.andWhere('requestedProduct.status = :status', {
         status: query.status,
       });
+    } else {
+      queryBuilder.andWhere('requestedProduct.status != :removedStatus', {
+        removedStatus: RequestedProductStatus.REMOVED,
+      });
     }
 
     if (query.activeOnly === true) {
