@@ -195,9 +195,9 @@ export class DistributionPointService {
     };
   }
 
-  async findById(id: string): Promise<DistributionPoint> {
+  async findById(distributionPointId: string): Promise<DistributionPoint> {
     const point = await this.repository.findOne({
-      where: { id },
+      where: { id: distributionPointId },
       relations: {
         address: true,
         files: true,
@@ -214,11 +214,11 @@ export class DistributionPointService {
   }
 
   async update(
-    id: string,
+    distributionPointId: string,
     body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
     const distributionPoint = await this.repository.findOne({
-      where: { id },
+      where: { id: distributionPointId },
       relations: { address: true },
     });
     if (!distributionPoint)
@@ -298,14 +298,16 @@ export class DistributionPointService {
     });
   }
 
-  async remove(id: string): Promise<{ ok: true }> {
-    const distributionPoint = await this.repository.findOne({ where: { id } });
+  async remove(distributionPointId: string): Promise<{ ok: true }> {
+    const distributionPoint = await this.repository.findOne({
+      where: { id: distributionPointId },
+    });
     if (!distributionPoint)
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
 
-    await this.repository.delete({ id });
+    await this.repository.delete({ id: distributionPointId });
 
     return { ok: true };
   }

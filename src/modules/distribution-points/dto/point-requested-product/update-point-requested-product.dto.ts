@@ -1,7 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { RequestedProductStatus } from '../../shared';
 import { CommonMessagesHelper } from 'src/common/helpers';
+import { Trim } from 'src/common/validation';
 
 export class UpdatePointRequestedProductDto {
   @ApiPropertyOptional({
@@ -19,16 +28,16 @@ export class UpdatePointRequestedProductDto {
   @Min(1, { message: CommonMessagesHelper.NUMBER_MIN('requestedQuantity', 1) })
   requestedQuantity?: number;
 
-  @ApiPropertyOptional({
-    example: '2a1b3c4d-5e6f-7081-92a3-b4c5d6e7f890',
-    format: 'uuid',
-    description: 'ID do produto',
-  })
+  @ApiPropertyOptional({ example: 'Arroz' })
   @IsOptional()
-  @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('productId', 'uuid'),
+  @Trim()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('productName', 'string'),
   })
-  productId?: string;
+  @MaxLength(200, {
+    message: CommonMessagesHelper.FIELD_MAX_LENGTH('productName', 200),
+  })
+  productName?: string;
 
   @ApiPropertyOptional({
     enum: RequestedProductStatus,

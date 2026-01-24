@@ -9,11 +9,7 @@ import { Donation } from '../entities/donation.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { DonationStatus, RequestedProductStatus } from '../shared';
-import {
-  CreateDonationDto,
-  ListDonationsDto,
-  UpdateDonationDto,
-} from '../dto/donation';
+import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
 import {
   DonationMessagesHelper,
   PointRequestedProductsMessagesHelper,
@@ -41,7 +37,7 @@ export class DonationsService {
     return RequestedProductStatus.OPEN;
   }
 
-  async create(body: CreateDonationDto): Promise<Donation> {
+  async create(userId: string, body: CreateDonationDto): Promise<Donation> {
     const quantity = Number(body.quantity ?? 0);
     if (!Number.isFinite(quantity) || quantity <= 0)
       throw new ConflictException(
@@ -49,7 +45,7 @@ export class DonationsService {
       );
 
     const user = await this.usersRepository.findOne({
-      where: { id: body.userId },
+      where: { id: userId },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado.');
 
@@ -59,31 +55,31 @@ export class DonationsService {
       );
       const donationRepository = transactionManager.getRepository(Donation);
 
-      const req = await requestedProductRepository
+      const requestedProduct = await requestedProductRepository
         .createQueryBuilder('requestedProduct')
         .setLock('pessimistic_write')
         .where('requestedProduct.id = :id', { id: body.requestedProductId })
         .getOne();
 
-      if (!req)
+      if (!requestedProduct)
         throw new NotFoundException(
           PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
         );
 
-      if (req.status !== RequestedProductStatus.OPEN) {
+      if (requestedProduct.status !== RequestedProductStatus.OPEN) {
         throw new ConflictException(
           PointRequestedProductsMessagesHelper.PRODUCT_NOT_ACEPTING_DONATIONS,
         );
       }
 
-      const requestedQuantity = Number(req.requestedQuantity ?? 0);
-      const donatedQuantity = Number(req.donatedQuantity ?? 0);
+      const requestedQuantity = Number(requestedProduct.requestedQuantity ?? 0);
+      const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
       const remaining = Math.max(0, requestedQuantity - donatedQuantity);
 
       if (remaining <= 0) {
-        req.status = RequestedProductStatus.FULL;
-        req.closesAt = req.closesAt ?? new Date();
-        await requestedProductRepository.save(req);
+        requestedProduct.status = RequestedProductStatus.FULL;
+        requestedProduct.closesAt = requestedProduct.closesAt ?? new Date();
+        await requestedProductRepository.save(requestedProduct);
         throw new ConflictException(
           PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
         );
@@ -98,9 +94,9 @@ export class DonationsService {
       }
 
       const donation = donationRepository.create({
-        userId: body.userId,
+        userId,
         requestedProductId: body.requestedProductId,
-        distributionPointId: req.distributionPointId,
+        distributionPointId: requestedProduct.distributionPointId,
         quantity,
         status: DonationStatus.ACTIVE,
       });
@@ -110,20 +106,20 @@ export class DonationsService {
       const nextDonated = donatedQuantity + quantity;
       const nextStatus = this.computeStatus(requestedQuantity, nextDonated);
 
-      req.donatedQuantity = nextDonated;
-      req.status = nextStatus;
-      req.closesAt =
+      requestedProduct.donatedQuantity = nextDonated;
+      requestedProduct.status = nextStatus;
+      requestedProduct.closesAt =
         nextStatus === RequestedProductStatus.FULL
-          ? (req.closesAt ?? new Date())
+          ? (requestedProduct.closesAt ?? new Date())
           : null;
 
-      await requestedProductRepository.save(req);
+      await requestedProductRepository.save(requestedProduct);
 
       return saved;
     });
   }
 
-  async list(query: ListDonationsDto) {
+  async list(userId: string, query: ListDonationsDto) {
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
     const offset = Math.max(0, Number(query.offset ?? 0));
     const skip = offset;
@@ -143,30 +139,26 @@ export class DonationsService {
     if (query.distributionPointId) {
       queryBuilder.andWhere(
         'donation.distributionPointId = :distributionPointId',
-        {
-          distributionPointId: query.distributionPointId,
-        },
+        { distributionPointId: query.distributionPointId },
       );
     }
 
-    if (query.userId) {
-      queryBuilder.andWhere('donation.userId = :userId', {
-        userId: query.userId,
-      });
-    }
+    queryBuilder.andWhere('donation.userId = :userId', { userId });
 
     if (query.requestedProductId) {
       queryBuilder.andWhere(
         'donation.requestedProductId = :requestedProductId',
-        {
-          requestedProductId: query.requestedProductId,
-        },
+        { requestedProductId: query.requestedProductId },
       );
     }
 
     if (query.status) {
       queryBuilder.andWhere('donation.status = :status', {
         status: query.status,
+      });
+    } else {
+      queryBuilder.andWhere('donation.status != :canceledStatus', {
+        canceledStatus: DonationStatus.CANCELED,
       });
     }
 
@@ -215,33 +207,7 @@ export class DonationsService {
     };
   }
 
-  async findById(id: string): Promise<Donation> {
-    const donation = await this.repository
-      .createQueryBuilder('donation')
-      .leftJoin('donation.user', 'user')
-      .select(['donation', 'user.name', 'user.email'])
-      .where('donation.id = :id', { id })
-      .getOne();
-
-    if (!donation) {
-      throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
-    }
-
-    return donation;
-  }
-
-  async update(id: string, body: UpdateDonationDto): Promise<Donation> {
-    const nextQuantity =
-      body.quantity !== undefined ? Number(body.quantity) : undefined;
-    if (
-      nextQuantity !== undefined &&
-      (!Number.isFinite(nextQuantity) || nextQuantity < 0)
-    ) {
-      throw new ConflictException(
-        PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
-      );
-    }
-
+  async cancel(userId: string, donationId: string): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(
@@ -249,114 +215,16 @@ export class DonationsService {
       );
 
       const donation = await donationRepository.findOne({
-        where: { id },
-      });
-      if (!donation)
-        throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
-      if (donation.status !== DonationStatus.ACTIVE)
-        throw new ConflictException(DonationMessagesHelper.DONATION_NOT_ACTIVE);
-
-      if (nextQuantity === undefined) return donation;
-
-      const currentQuantity = Number(donation.quantity ?? 0);
-      if (nextQuantity === currentQuantity) return donation;
-
-      const req = await requestedProductRepository
-        .createQueryBuilder('requestedProduct')
-        .setLock('pessimistic_write')
-        .where('requestedProduct.id = :id', { id: donation.requestedProductId })
-        .getOne();
-
-      if (!req)
-        throw new NotFoundException(
-          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
-        );
-
-      const requestedQuantity = Number(req.requestedQuantity ?? 0);
-      const donatedQuantity = Number(req.donatedQuantity ?? 0);
-
-      if (nextQuantity > currentQuantity) {
-        if (req.status !== RequestedProductStatus.OPEN) {
-          throw new ConflictException(
-            PointRequestedProductsMessagesHelper.PRODUCT_NOT_ACEPTING_DONATIONS,
-          );
-        }
-
-        const add = nextQuantity - currentQuantity;
-        const remaining = Math.max(0, requestedQuantity - donatedQuantity);
-
-        if (remaining <= 0) {
-          req.status = RequestedProductStatus.FULL;
-          req.closesAt = req.closesAt ?? new Date();
-          await requestedProductRepository.save(req);
-          throw new ConflictException(
-            PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
-          );
-        }
-
-        if (add > remaining) {
-          throw new ConflictException(
-            PointRequestedProductsMessagesHelper.QUANTITY_EXCEEDS_REQUESTED(
-              remaining,
-            ),
-          );
-        }
-
-        donation.quantity = nextQuantity;
-        const savedDonation = await donationRepository.save(donation);
-
-        const nextDonated = donatedQuantity + add;
-        const nextStatus = this.computeStatus(requestedQuantity, nextDonated);
-
-        req.donatedQuantity = nextDonated;
-        req.status = nextStatus;
-        req.closesAt =
-          nextStatus === RequestedProductStatus.FULL
-            ? (req.closesAt ?? new Date())
-            : null;
-
-        await requestedProductRepository.save(req);
-
-        return savedDonation;
-      }
-
-      const sub = currentQuantity - nextQuantity;
-
-      donation.quantity = nextQuantity;
-      const savedDonation = await donationRepository.save(donation);
-
-      const nextDonated = Math.max(0, donatedQuantity - sub);
-      const nextStatus =
-        req.status === RequestedProductStatus.REMOVED
-          ? RequestedProductStatus.REMOVED
-          : this.computeStatus(requestedQuantity, nextDonated);
-
-      req.donatedQuantity = nextDonated;
-      req.status = nextStatus;
-      req.closesAt =
-        nextStatus === RequestedProductStatus.FULL
-          ? (req.closesAt ?? new Date())
-          : null;
-
-      await requestedProductRepository.save(req);
-
-      return savedDonation;
-    });
-  }
-
-  async cancel(id: string): Promise<{ ok: true }> {
-    return this.dataSource.transaction(async (transactionManager) => {
-      const donationRepository = transactionManager.getRepository(Donation);
-      const requestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-
-      const donation = await donationRepository.findOne({
-        where: { id },
+        where: { id: donationId },
       });
       if (!donation) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
       }
+
+      if (donation.userId !== userId) {
+        throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
+      }
+
       if (donation.status !== DonationStatus.ACTIVE) {
         return { ok: true };
       }
@@ -396,6 +264,77 @@ export class DonationsService {
       await requestedProductRepository.save(request);
 
       return { ok: true };
+    });
+  }
+
+  async confirmDelivery(donationId: string): Promise<Donation> {
+    return this.dataSource.transaction(async (transactionManager) => {
+      const donationRepository = transactionManager.getRepository(Donation);
+      const requestedProductRepository = transactionManager.getRepository(
+        PointRequestedProduct,
+      );
+
+      const donation = await donationRepository
+        .createQueryBuilder('donation')
+        .setLock('pessimistic_write')
+        .where('donation.id = :id', { id: donationId })
+        .getOne();
+
+      if (!donation) {
+        throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
+      }
+
+      if (donation.status === DonationStatus.CANCELED) {
+        throw new ConflictException(DonationMessagesHelper.DONATION_NOT_FOUND);
+      }
+
+      if (donation.status === DonationStatus.DELIVERED) {
+        return donation;
+      }
+
+      const requestedProduct = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
+        .setLock('pessimistic_write')
+        .where('requestedProduct.id = :id', { id: donation.requestedProductId })
+        .getOne();
+
+      if (!requestedProduct) {
+        throw new NotFoundException(
+          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
+
+      const donatedQuantity = requestedProduct.donatedQuantity;
+      const deliveredQuantity = requestedProduct.deliveredQuantity;
+      const requestedQuantity = requestedProduct.requestedQuantity;
+
+      if (deliveredQuantity >= donatedQuantity) {
+        throw new ConflictException(
+          PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
+        );
+      }
+
+      donation.status = DonationStatus.DELIVERED;
+      const savedDonation = await donationRepository.save(donation);
+
+      const nextDelivered = deliveredQuantity + 1;
+
+      if (nextDelivered > donatedQuantity) {
+        throw new ConflictException(
+          PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
+        );
+      }
+
+      requestedProduct.deliveredQuantity = nextDelivered;
+
+      if (nextDelivered >= requestedQuantity) {
+        requestedProduct.status = RequestedProductStatus.DELIVERED;
+        requestedProduct.closesAt = requestedProduct.closesAt ?? new Date();
+      }
+
+      await requestedProductRepository.save(requestedProduct);
+
+      return savedDonation;
     });
   }
 }

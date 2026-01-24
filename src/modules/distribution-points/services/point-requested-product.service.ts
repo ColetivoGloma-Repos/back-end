@@ -8,7 +8,7 @@ import { DataSource, In, Repository } from 'typeorm';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
-import { RequestedProductStatus } from '../shared';
+import { DonationStatus, RequestedProductStatus } from '../shared';
 import {
   CreatePointRequestedProductDto,
   ListPointRequestedProductsDto,
@@ -20,6 +20,7 @@ import {
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
+import { Donation } from '../entities';
 
 @Injectable()
 export class PointRequestedProductsService {
@@ -297,9 +298,9 @@ export class PointRequestedProductsService {
     };
   }
 
-  async findById(id: string): Promise<PointRequestedProduct> {
+  async findById(requestedProductId: string): Promise<PointRequestedProduct> {
     const requestedPoint = await this.repository.findOne({
-      where: { id },
+      where: { id: requestedProductId },
       relations: { product: true },
     });
 
@@ -313,55 +314,82 @@ export class PointRequestedProductsService {
   }
 
   async update(
-    id: string,
+    requestedProductId: string,
     body: UpdatePointRequestedProductDto,
   ): Promise<PointRequestedProduct> {
-    const requestedPoint = await this.repository.findOne({ where: { id } });
-    if (!requestedPoint)
-      throw new NotFoundException(
-        PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+    return this.dataSource.transaction(async (transactionManager) => {
+      const requestedProductRepository = transactionManager.getRepository(
+        PointRequestedProduct,
       );
+      const productRepository = transactionManager.getRepository(Product);
 
-    if (body.requestedQuantity !== undefined) {
-      requestedPoint.requestedQuantity = body.requestedQuantity;
-    }
+      const requestedPoint = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
+        .setLock('pessimistic_write')
+        .where('requestedProduct.id = :id', { id: requestedProductId })
+        .getOne();
 
-    if (body.productId) {
-      const product = await this.productsRepository.findOne({
-        where: { id: body.productId },
-      });
-      if (!product)
-        throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
-      requestedPoint.productId = body.productId;
-    }
+      if (!requestedPoint) {
+        throw new NotFoundException(
+          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
 
-    if (body.status) {
-      requestedPoint.status = body.status;
-    }
+      if (body.requestedQuantity !== undefined) {
+        requestedPoint.requestedQuantity = body.requestedQuantity;
+      }
 
-    if (body.closesAt !== undefined) {
-      requestedPoint.closesAt = body.closesAt ? new Date(body.closesAt) : null;
-    }
+      if (body.productName !== undefined) {
+        if (!requestedPoint.productId) {
+          throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
+        }
 
-    const nextStatus =
-      requestedPoint.status === RequestedProductStatus.REMOVED
-        ? RequestedProductStatus.REMOVED
-        : this.computeStatus(
-            Number(requestedPoint.requestedQuantity ?? 0),
-            Number(requestedPoint.donatedQuantity ?? 0),
-          );
+        const product = await productRepository
+          .createQueryBuilder('product')
+          .setLock('pessimistic_write')
+          .where('product.id = :id', { id: requestedPoint.productId })
+          .getOne();
 
-    requestedPoint.status = nextStatus;
-    requestedPoint.closesAt =
-      nextStatus === RequestedProductStatus.FULL
-        ? (requestedPoint.closesAt ?? new Date())
-        : null;
+        if (!product) {
+          throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
+        }
 
-    return this.repository.save(requestedPoint);
+        product.name = body.productName;
+        await productRepository.save(product);
+      }
+
+      if (body.status) {
+        requestedPoint.status = body.status;
+      }
+
+      if (body.closesAt !== undefined) {
+        requestedPoint.closesAt = body.closesAt
+          ? new Date(body.closesAt)
+          : null;
+      }
+
+      const nextStatus =
+        requestedPoint.status === RequestedProductStatus.REMOVED
+          ? RequestedProductStatus.REMOVED
+          : this.computeStatus(
+              Number(requestedPoint.requestedQuantity ?? 0),
+              Number(requestedPoint.donatedQuantity ?? 0),
+            );
+
+      requestedPoint.status = nextStatus;
+      requestedPoint.closesAt =
+        nextStatus === RequestedProductStatus.FULL
+          ? (requestedPoint.closesAt ?? new Date())
+          : null;
+
+      return requestedProductRepository.save(requestedPoint);
+    });
   }
 
-  async remove(id: string): Promise<{ ok: true }> {
-    const requestedPoint = await this.repository.findOne({ where: { id } });
+  async remove(requestedProductId: string): Promise<{ ok: true }> {
+    const requestedPoint = await this.repository.findOne({
+      where: { id: requestedProductId },
+    });
     if (!requestedPoint)
       throw new NotFoundException(
         PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
@@ -373,5 +401,129 @@ export class PointRequestedProductsService {
     await this.repository.save(requestedPoint);
 
     return { ok: true };
+  }
+
+  async cancelAllDonationsForUser(
+    userId: string,
+    requestedProductId: string,
+  ): Promise<{ ok: true }> {
+    return this.dataSource.transaction(async (transactionManager) => {
+      const donationRepository = transactionManager.getRepository(Donation);
+      const requestedProductRepository = transactionManager.getRepository(
+        PointRequestedProduct,
+      );
+
+      const request = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
+        .setLock('pessimistic_write')
+        .where('requestedProduct.id = :id', { id: requestedProductId })
+        .getOne();
+
+      if (!request) {
+        throw new NotFoundException(
+          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
+
+      const donations = await donationRepository.find({
+        where: {
+          userId,
+          requestedProductId,
+          status: DonationStatus.ACTIVE,
+        },
+      });
+
+      if (!donations.length) {
+        return { ok: true };
+      }
+
+      const totalCancelQuantity = donations.reduce(
+        (sum, d) => sum + Number(d.quantity ?? 0),
+        0,
+      );
+
+      for (const donation of donations) {
+        donation.status = DonationStatus.CANCELED;
+      }
+      await donationRepository.save(donations);
+
+      const requestedQuantity = Number(request.requestedQuantity ?? 0);
+      const donatedQuantity = Number(request.donatedQuantity ?? 0);
+
+      const nextDonated = Math.max(0, donatedQuantity - totalCancelQuantity);
+
+      const nextStatus =
+        request.status === RequestedProductStatus.REMOVED
+          ? RequestedProductStatus.REMOVED
+          : this.computeStatus(requestedQuantity, nextDonated);
+
+      request.donatedQuantity = nextDonated;
+      request.status = nextStatus;
+      request.closesAt =
+        nextStatus === RequestedProductStatus.FULL
+          ? (request.closesAt ?? new Date())
+          : null;
+
+      await requestedProductRepository.save(request);
+
+      return { ok: true };
+    });
+  }
+
+  async confirmDeliveryAllDonations(
+    requestedProductId: string,
+  ): Promise<{ ok: true }> {
+    return this.dataSource.transaction(async (transactionManager) => {
+      const requestedProductRepository = transactionManager.getRepository(
+        PointRequestedProduct,
+      );
+      const donationRepository = transactionManager.getRepository(Donation);
+
+      const requestedProduct = await requestedProductRepository
+        .createQueryBuilder('requestedProduct')
+        .setLock('pessimistic_write')
+        .where('requestedProduct.id = :id', { id: requestedProductId })
+        .getOne();
+
+      if (!requestedProduct) {
+        throw new NotFoundException(
+          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
+
+      const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
+      const deliveredQuantity = Number(requestedProduct.deliveredQuantity ?? 0);
+
+      if (donatedQuantity <= 0) {
+        throw new ConflictException(
+          PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
+        );
+      }
+
+      if (deliveredQuantity > donatedQuantity) {
+        requestedProduct.deliveredQuantity = donatedQuantity;
+      }
+
+      const donations = await donationRepository.find({
+        where: { requestedProductId },
+      });
+
+      if (donations.length) {
+        for (const donation of donations) {
+          if (donation.status !== DonationStatus.CANCELED) {
+            donation.status = DonationStatus.DELIVERED;
+          }
+        }
+        await donationRepository.save(donations);
+      }
+
+      requestedProduct.deliveredQuantity = donatedQuantity;
+      requestedProduct.status = RequestedProductStatus.DELIVERED;
+      requestedProduct.closesAt = requestedProduct.closesAt ?? new Date();
+
+      await requestedProductRepository.save(requestedProduct);
+
+      return { ok: true };
+    });
   }
 }

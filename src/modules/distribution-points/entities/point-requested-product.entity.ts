@@ -51,6 +51,9 @@ export class PointRequestedProduct {
   @Column({ type: 'int', default: 0 })
   donatedQuantity!: number;
 
+  @Column({ type: 'int', default: 0 })
+  deliveredQuantity!: number;
+
   @Column({
     type: 'enum',
     enum: RequestedProductStatus,

@@ -36,14 +36,12 @@ export class DistributionPointController {
 
   @Get()
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
   async list(@Query() query: ListDistributionPointsDto) {
     return this.service.list(query);
   }
 
   @Get(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
   async findById(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<DistributionPoint> {

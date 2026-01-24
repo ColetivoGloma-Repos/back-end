@@ -20,17 +20,6 @@ export class ListDonationsDto extends QueryRequest {
   distributionPointId?: string;
 
   @ApiPropertyOptional({
-    example: 'b2a3c4d5-e6f7-4890-8123-4567890abcde',
-    format: 'uuid',
-    description: 'Filtro por usuário',
-  })
-  @IsOptional()
-  @IsUUID('4', {
-    message: CommonMessagesHelper.FIELD_INVALID_TYPE('userId', 'uuid'),
-  })
-  userId?: string;
-
-  @ApiPropertyOptional({
     example: 'c3d4e5f6-a7b8-4901-9234-567890abcdef',
     format: 'uuid',
     description: 'Filtro por produto solicitado',

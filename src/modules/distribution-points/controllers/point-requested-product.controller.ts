@@ -18,6 +18,8 @@ import {
   ListPointRequestedProductsDto,
   UpdatePointRequestedProductDto,
 } from '../dto/point-requested-product';
+import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
+import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
 
 @ApiTags('DistributionPointRequestedProducts')
 @Controller('distribution-point/requested-products')
@@ -42,27 +44,55 @@ export class PointRequestedProductsController {
     return this.pointRequestedProductsService.list(query);
   }
 
-  @Get(':id')
+  @Get(':requestedProductId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async findById(@Param('id') id: string): Promise<PointRequestedProduct> {
-    return this.pointRequestedProductsService.findById(id);
+  async findById(
+    @Param('requestedProductId') requestedProductId: string,
+  ): Promise<PointRequestedProduct> {
+    return this.pointRequestedProductsService.findById(requestedProductId);
   }
 
-  @Patch(':id')
+  @Patch(':requestedProductId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async update(
-    @Param('id') id: string,
+    @Param('requestedProductId') requestedProductId: string,
     @Body() body: UpdatePointRequestedProductDto,
   ): Promise<PointRequestedProduct> {
-    return this.pointRequestedProductsService.update(id, body);
+    return this.pointRequestedProductsService.update(requestedProductId, body);
   }
 
-  @Delete(':id')
+  @Delete(':requestedProductId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async remove(@Param('id') id: string): Promise<{ ok: true }> {
-    return this.pointRequestedProductsService.remove(id);
+  async remove(
+    @Param('requestedProductId') requestedProductId: string,
+  ): Promise<{ ok: true }> {
+    return this.pointRequestedProductsService.remove(requestedProductId);
+  }
+
+  @Delete(':requestedProductId/donations')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async cancelAll(
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('requestedProductId') requestedProductId: string,
+  ): Promise<{ ok: true }> {
+    return this.pointRequestedProductsService.cancelAllDonationsForUser(
+      currentUser.id,
+      requestedProductId,
+    );
+  }
+
+  @Patch(':requestedProductId/confirm-delivered')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async confirmDeliveryAllDonations(
+    @Param('requestedProductId') requestedProductId: string,
+  ): Promise<{ ok: true }> {
+    return this.pointRequestedProductsService.confirmDeliveryAllDonations(
+      requestedProductId,
+    );
   }
 }
