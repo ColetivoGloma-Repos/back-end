@@ -27,7 +27,7 @@ async function bootstrap() {
   appConfig(app);
 
   if (EnvConfig.ENV !== 'production') {
-    await app.listen(8080);
+    await app.listen(8081);
   } else {
     await app.init();
 

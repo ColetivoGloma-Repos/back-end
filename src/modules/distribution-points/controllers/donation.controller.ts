@@ -52,12 +52,12 @@ export class DonationController {
     return this.donationsService.cancel(currentUser.id, donationId);
   }
 
-  @Patch(':donationId/confirm-delivered')
+  @Patch(':donationId/delivered')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async confirmDeliveryAllDonations(
     @Param('donationId') donationId: string,
   ): Promise<Donation> {
-    return this.donationsService.confirmDelivery(donationId);
+    return this.donationsService.delivered(donationId);
   }
 }

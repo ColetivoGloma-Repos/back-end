@@ -21,6 +21,7 @@ import {
 } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
 import { Donation } from '../entities';
+import { buildPagination } from 'src/common/helpers';
 
 @Injectable()
 export class PointRequestedProductsService {
@@ -216,23 +217,15 @@ export class PointRequestedProductsService {
   }
 
   async list(query: ListPointRequestedProductsDto) {
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
-    const offset = Math.max(0, Number(query.offset ?? 0));
-    const skip = offset;
-
-    const page = Math.floor(skip / limit) + 1;
+    const pagination = buildPagination(query, { createdAt: 'DESC' });
 
     const queryBuilder = this.repository
       .createQueryBuilder('requestedProduct')
       .leftJoinAndSelect('requestedProduct.product', 'product')
       .leftJoin('requestedProduct.point', 'point')
-      .take(limit)
-      .skip(skip);
+      .take(pagination.take)
+      .skip(pagination.skip);
 
-    const sortByRaw = (query.sortBy ?? 'createdAt').toString();
-    const sortRaw = (query.sort ?? 'DESC').toString().toUpperCase();
-
-    const sortDir = sortRaw === 'ASC' ? 'ASC' : 'DESC';
     const allowedSortBy = new Set([
       'createdAt',
       'updatedAt',
@@ -243,7 +236,9 @@ export class PointRequestedProductsService {
       'pointTitle',
     ]);
 
-    const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
+    const sortField = Object.keys(pagination.order)[0];
+    const sortDir = pagination.order[sortField];
+    const sortBy = allowedSortBy.has(sortField) ? sortField : 'createdAt';
 
     if (sortBy === 'productName') {
       queryBuilder.orderBy('product.name', sortDir);
@@ -256,9 +251,7 @@ export class PointRequestedProductsService {
     if (query.distributionPointId) {
       queryBuilder.andWhere(
         'requestedProduct.distributionPointId = :distributionPointId',
-        {
-          distributionPointId: query.distributionPointId,
-        },
+        { distributionPointId: query.distributionPointId },
       );
     }
 
@@ -284,21 +277,21 @@ export class PointRequestedProductsService {
       });
     }
 
-    if (query.q && query.q.trim()) {
+    if (query.q?.trim()) {
       const q = query.q.trim();
       queryBuilder.andWhere('product.name ILIKE :q OR product.slug ILIKE :q', {
         q: `%${q}%`,
       });
     }
 
-    const [requestedPoints, total] = await queryBuilder.getManyAndCount();
+    const [items, total] = await queryBuilder.getManyAndCount();
 
     return {
-      items: requestedPoints,
+      items,
       total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
+      page: pagination.page,
+      limit: pagination.limit,
+      pages: Math.ceil(total / pagination.limit),
     };
   }
 

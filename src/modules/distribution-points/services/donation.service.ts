@@ -14,6 +14,7 @@ import {
   DonationMessagesHelper,
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
+import { buildPagination } from 'src/common/helpers';
 
 @Injectable()
 export class DonationsService {
@@ -120,11 +121,7 @@ export class DonationsService {
   }
 
   async list(userId: string, query: ListDonationsDto) {
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
-    const offset = Math.max(0, Number(query.offset ?? 0));
-    const skip = offset;
-
-    const page = Math.floor(skip / limit) + 1;
+    const pagination = buildPagination(query, { createdAt: 'DESC' });
 
     const queryBuilder = this.repository
       .createQueryBuilder('donation')
@@ -132,14 +129,25 @@ export class DonationsService {
       .leftJoin('donation.requestedProduct', 'requestedProduct')
       .leftJoin('requestedProduct.product', 'product')
       .leftJoin('requestedProduct.point', 'point')
-      .select(['donation', 'user.name', 'user.email'])
-      .take(limit)
-      .skip(skip);
+      .select([
+        'donation',
+        'user.name',
+        'user.email',
+        'user.phone',
+        'requestedProduct.id',
+        'product.id',
+        'product.name',
+        'product.unit',
+      ])
+      .take(pagination.take)
+      .skip(pagination.skip);
 
     if (query.distributionPointId) {
       queryBuilder.andWhere(
         'donation.distributionPointId = :distributionPointId',
-        { distributionPointId: query.distributionPointId },
+        {
+          distributionPointId: query.distributionPointId,
+        },
       );
     }
 
@@ -148,7 +156,9 @@ export class DonationsService {
     if (query.requestedProductId) {
       queryBuilder.andWhere(
         'donation.requestedProductId = :requestedProductId',
-        { requestedProductId: query.requestedProductId },
+        {
+          requestedProductId: query.requestedProductId,
+        },
       );
     }
 
@@ -156,23 +166,23 @@ export class DonationsService {
       queryBuilder.andWhere('donation.status = :status', {
         status: query.status,
       });
+    } else if (query.excludeStatus) {
+      queryBuilder.andWhere('donation.status != :excludeStatus', {
+        excludeStatus: query.excludeStatus,
+      });
     } else {
       queryBuilder.andWhere('donation.status != :canceledStatus', {
         canceledStatus: DonationStatus.CANCELED,
       });
     }
 
-    if (query.q && query.q.trim()) {
+    if (query.q?.trim()) {
       const q = query.q.trim();
       queryBuilder.andWhere(
         '(product.name ILIKE :q OR product.slug ILIKE :q OR point.title ILIKE :q OR user.name ILIKE :q OR user.email ILIKE :q)',
         { q: `%${q}%` },
       );
     }
-
-    const sortByRaw = (query.sortBy ?? 'createdAt').toString();
-    const sortRaw = (query.sort ?? 'DESC').toString().toUpperCase();
-    const sortDir = sortRaw === 'ASC' ? 'ASC' : 'DESC';
 
     const allowedSortBy = new Set([
       'createdAt',
@@ -184,7 +194,10 @@ export class DonationsService {
       'userName',
     ]);
 
-    const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
+    const sortField = Object.keys(pagination.order)[0];
+    const sortDir = pagination.order[sortField];
+
+    const sortBy = allowedSortBy.has(sortField) ? sortField : 'createdAt';
 
     if (sortBy === 'productName') {
       queryBuilder.orderBy('product.name', sortDir);
@@ -201,9 +214,9 @@ export class DonationsService {
     return {
       items,
       total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
+      page: pagination.page,
+      limit: pagination.limit,
+      pages: Math.ceil(total / pagination.limit),
     };
   }
 
@@ -267,7 +280,7 @@ export class DonationsService {
     });
   }
 
-  async confirmDelivery(donationId: string): Promise<Donation> {
+  async delivered(donationId: string): Promise<Donation> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(

@@ -43,4 +43,15 @@ export class ListDonationsDto extends QueryRequest {
     message: CommonMessagesHelper.FIELD_INVALID_ENUM('status'),
   })
   status?: DonationStatus;
+
+  @ApiPropertyOptional({
+    enum: DonationStatus,
+    example: DonationStatus.ACTIVE,
+    description: 'Excluir do resultado itens com este status',
+  })
+  @IsOptional()
+  @IsEnum(DonationStatus, {
+    message: CommonMessagesHelper.FIELD_INVALID_ENUM('excludeStatus'),
+  })
+  excludeStatus?: DonationStatus;
 }

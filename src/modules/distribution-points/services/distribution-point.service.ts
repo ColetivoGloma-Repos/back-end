@@ -18,6 +18,7 @@ import {
 import { DistributionPointsMessagesHelper } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
 import { PointRequestedProductsService } from './point-requested-product.service';
+import { buildPagination } from 'src/common/helpers';
 
 @Injectable()
 export class DistributionPointService {
@@ -32,7 +33,10 @@ export class DistributionPointService {
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
 
-  async create(body: CreateDistributionPointDto): Promise<DistributionPoint> {
+  async create(
+    userId: string,
+    body: CreateDistributionPointDto,
+  ): Promise<DistributionPoint> {
     const requestedProducts = Array.isArray(body.requestedProducts)
       ? body.requestedProducts
       : [];
@@ -73,8 +77,8 @@ export class DistributionPointService {
         title: body.title,
         description: body.description ?? null,
         phone: body.phone,
-        ownerId: body.ownerId,
-        status: body.status ?? DistributionPointStatus.PENDING,
+        ownerId: userId,
+        status: DistributionPointStatus.PENDING,
         address: savedAddress,
       });
 
@@ -135,36 +139,29 @@ export class DistributionPointService {
   }
 
   async list(query: ListDistributionPointsDto) {
-    const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
-    const offset = Math.max(0, Number(query.offset ?? 0));
-    const skip = offset;
-
-    const page = Math.floor(skip / limit) + 1;
+    const pagination = buildPagination(query, { createdAt: 'DESC' });
 
     const queryBuilder = this.repository
       .createQueryBuilder('distributionPoint')
       .leftJoinAndSelect('distributionPoint.address', 'address')
-      .leftJoin('distributionPoint.requestedProducts', 'rp')
-      .leftJoin('rp.product', 'product')
-      .take(limit)
-      .skip(skip);
+      .leftJoin('distributionPoint.requestedProducts', 'requestedProduct')
+      .leftJoin('requestedProduct.product', 'product')
+      .take(pagination.take)
+      .skip(pagination.skip);
 
-    if (query.ownerId)
+    if (query.ownerId) {
       queryBuilder.andWhere('distributionPoint.ownerId = :ownerId', {
         ownerId: query.ownerId,
       });
+    }
 
-    if (query.q && String(query.q).trim()) {
-      const q = String(query.q).trim();
+    if (query.q?.trim()) {
+      const q = query.q.trim();
       queryBuilder.andWhere(
         '(distributionPoint.title ILIKE :q OR distributionPoint.description ILIKE :q OR distributionPoint.phone ILIKE :q OR address.municipio ILIKE :q OR address.bairro ILIKE :q OR address.logradouro ILIKE :q)',
         { q: `%${q}%` },
       );
     }
-
-    const sortByRaw = String(query.sortBy ?? 'createdAt');
-    const sortRaw = String(query.sort ?? 'DESC').toUpperCase();
-    const sortDir = sortRaw === 'ASC' ? 'ASC' : 'DESC';
 
     const allowedSortBy = new Set([
       'createdAt',
@@ -174,7 +171,10 @@ export class DistributionPointService {
       'municipio',
       'estado',
     ]);
-    const sortBy = allowedSortBy.has(sortByRaw) ? sortByRaw : 'createdAt';
+
+    const sortField = Object.keys(pagination.order)[0];
+    const sortDir = pagination.order[sortField];
+    const sortBy = allowedSortBy.has(sortField) ? sortField : 'createdAt';
 
     if (sortBy === 'municipio') {
       queryBuilder.orderBy('address.municipio', sortDir);
@@ -189,9 +189,9 @@ export class DistributionPointService {
     return {
       items,
       total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
+      page: pagination.page,
+      limit: pagination.limit,
+      pages: Math.ceil(total / pagination.limit),
     };
   }
 
@@ -214,6 +214,7 @@ export class DistributionPointService {
   }
 
   async update(
+    userId: string,
     distributionPointId: string,
     body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
@@ -235,10 +236,6 @@ export class DistributionPointService {
 
     if (body.phone !== undefined) {
       distributionPoint.phone = body.phone;
-    }
-
-    if (body.status !== undefined) {
-      distributionPoint.status = body.status;
     }
 
     if (body.address !== undefined && body.address) {
@@ -285,7 +282,6 @@ export class DistributionPointService {
         where: { id: distributionPoint.id },
         relations: {
           address: true,
-          requestedProducts: { product: true },
           files: true,
         },
       });

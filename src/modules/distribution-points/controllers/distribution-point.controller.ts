@@ -19,6 +19,8 @@ import {
   ListDistributionPointsDto,
   UpdateDistributionPointDto,
 } from '../dto/distribution-point';
+import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
+import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 
 @ApiTags('DistributionPoint')
 @Controller('distribution-point')
@@ -29,9 +31,10 @@ export class DistributionPointController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async create(
+    @CurrentUser() currentUser: CreateUserDto,
     @Body() body: CreateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    return this.service.create(body);
+    return this.service.create(currentUser.id, body);
   }
 
   @Get()
@@ -52,10 +55,11 @@ export class DistributionPointController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async update(
+    @CurrentUser() currentUser: CreateUserDto,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    return this.service.update(id, body);
+    return this.service.update(currentUser.id, id, body);
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')

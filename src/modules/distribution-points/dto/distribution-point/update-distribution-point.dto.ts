@@ -46,16 +46,6 @@ export class UpdateDistributionPointDto {
   })
   phone?: string;
 
-  @ApiPropertyOptional({
-    enum: DistributionPointStatus,
-    example: DistributionPointStatus.APPROVED,
-  })
-  @IsOptional()
-  @IsEnum(DistributionPointStatus, {
-    message: CommonMessagesHelper.FIELD_INVALID_ENUM('status'),
-  })
-  status?: DistributionPointStatus;
-
   @ApiPropertyOptional({ type: UpdateAddressDto })
   @IsOptional()
   @ValidateNested({ message: CommonMessagesHelper.FIELD_INVALID('address') })

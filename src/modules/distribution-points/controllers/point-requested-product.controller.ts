@@ -84,7 +84,7 @@ export class PointRequestedProductsController {
     );
   }
 
-  @Patch(':requestedProductId/confirm-delivered')
+  @Patch(':requestedProductId/delivered')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async confirmDeliveryAllDonations(
