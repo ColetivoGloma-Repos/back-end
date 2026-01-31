@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -33,9 +34,6 @@ export class PointRequestedProductsService {
 
     @InjectRepository(DistributionPoint)
     private readonly pointsRepository: Repository<DistributionPoint>,
-
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
 
     private readonly productsService: ProductsService,
   ) {}
@@ -333,6 +331,15 @@ export class PointRequestedProductsService {
       }
 
       if (body.requestedQuantity !== undefined) {
+        const donated = requestedPoint.donatedQuantity;
+        const nextRequested = body.requestedQuantity;
+
+        if (nextRequested < donated) {
+          throw new BadRequestException(
+            PointRequestedProductsMessagesHelper.REQUESTED_QUANTITY_LESS_THAN_DONATED,
+          );
+        }
+
         requestedPoint.requestedQuantity = body.requestedQuantity;
       }
 

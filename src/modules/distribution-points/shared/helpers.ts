@@ -6,6 +6,8 @@ export const PointRequestedProductsMessagesHelper = {
   QUANTITY_EXCEEDS_REQUESTED: (maxQuantity: number) =>
     `A quantidade da doação excede a quantidade solicitada. Máximo atual: ${maxQuantity}`,
   GOAL_ALREADY_REACHED: 'A meta de doações para este produto já foi atingida.',
+  REQUESTED_QUANTITY_LESS_THAN_DONATED:
+    'A quantidade solicitada não pode ser menor do que o total já doado.',
 };
 
 export const DistributionPointsMessagesHelper = {
