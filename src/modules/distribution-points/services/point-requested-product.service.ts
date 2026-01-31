@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { Brackets, DataSource, In, Repository } from 'typeorm';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -277,9 +277,14 @@ export class PointRequestedProductsService {
 
     if (query.q?.trim()) {
       const q = query.q.trim();
-      queryBuilder.andWhere('product.name ILIKE :q OR product.slug ILIKE :q', {
-        q: `%${q}%`,
-      });
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('product.name ILIKE :q', { q: `%${q}%` }).orWhere(
+            'product.slug ILIKE :q',
+            { q: `%${q}%` },
+          );
+        }),
+      );
     }
 
     const [items, total] = await queryBuilder.getManyAndCount();
