@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import { ProductsService } from 'src/modules/products/products.service';
 import { PointRequestedProductsService } from './point-requested-product.service';
 import { buildPagination } from 'src/common/helpers';
 import { getCoordinates } from '../../../common/utils';
+import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
 @Injectable()
 export class DistributionPointService {
@@ -35,9 +37,18 @@ export class DistributionPointService {
   ) {}
 
   async create(
-    userId: string,
     body: CreateDistributionPointDto,
+    options: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<DistributionPoint> {
+    const { roles, userId } = options;
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+
+    const ownerId = isAdmin && body.userId ? body.userId : userId;
+
+    if (!ownerId) {
+      throw new ForbiddenException('Usuário inválido para criação do ponto.');
+    }
+
     const requestedProducts = Array.isArray(body.requestedProducts)
       ? body.requestedProducts
       : [];
@@ -86,7 +97,7 @@ export class DistributionPointService {
         title: body.title,
         description: body.description ?? null,
         phone: body.phone,
-        ownerId: userId,
+        ownerId,
         status: DistributionPointStatus.PENDING,
         address: savedAddress,
       });
@@ -223,9 +234,9 @@ export class DistributionPointService {
   }
 
   async update(
-    userId: string,
     distributionPointId: string,
     body: UpdateDistributionPointDto,
+    options: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<DistributionPoint> {
     const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
@@ -235,6 +246,16 @@ export class DistributionPointService {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
+
+    const { roles, userId } = options;
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException(
+        'Apenas o proprietário ou um administrador podem atualizar este ponto de distribuição.',
+      );
+    }
 
     if (body.title !== undefined) {
       distributionPoint.title = body.title;
@@ -314,7 +335,10 @@ export class DistributionPointService {
     });
   }
 
-  async remove(distributionPointId: string): Promise<{ ok: true }> {
+  async remove(
+    distributionPointId: string,
+    options: { roles?: EAuthRoles[]; userId?: string },
+  ): Promise<{ ok: true }> {
     const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
     });
@@ -322,6 +346,16 @@ export class DistributionPointService {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
+
+    const { roles, userId } = options;
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException(
+        'Apenas o proprietário ou um administrador podem deletar este ponto de distribuição.',
+      );
+    }
 
     await this.repository.delete({ id: distributionPointId });
 

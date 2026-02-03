@@ -21,6 +21,7 @@ import {
 } from '../dto/distribution-point';
 import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 
 @ApiTags('DistributionPoint')
 @Controller('distribution-point')
@@ -30,11 +31,15 @@ export class DistributionPointController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async create(
     @CurrentUser() currentUser: CreateUserDto,
     @Body() body: CreateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    return this.service.create(currentUser.id, body);
+    return this.service.create(body, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Get()
@@ -44,28 +49,40 @@ export class DistributionPointController {
 
   @Get(':id([0-9a-fA-F-]{36})')
   async findById(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
+    distributionPointId: string,
   ): Promise<DistributionPoint> {
-    return this.service.findById(id);
+    return this.service.findById(distributionPointId);
   }
 
   @Patch(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async update(
     @CurrentUser() currentUser: CreateUserDto,
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
+    distributionPointId: string,
     @Body() body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    return this.service.update(currentUser.id, id, body);
+    return this.service.update(distributionPointId, body, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async remove(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
+    distributionPointId: string,
   ): Promise<{ ok: true }> {
-    return this.service.remove(id);
+    return this.service.remove(distributionPointId, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 }
