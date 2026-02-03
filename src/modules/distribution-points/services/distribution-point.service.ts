@@ -19,6 +19,7 @@ import { DistributionPointsMessagesHelper } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
 import { PointRequestedProductsService } from './point-requested-product.service';
 import { buildPagination } from 'src/common/helpers';
+import { getCoordinates } from '../../../common/utils';
 
 @Injectable()
 export class DistributionPointService {
@@ -57,6 +58,14 @@ export class DistributionPointService {
       const addressRepository = transactionManager.getRepository(Address);
 
       const address = body.address;
+
+      if (!address.latitude || !address.longitude) {
+        const coords = await getCoordinates(address);
+        if (coords) {
+          address.latitude = address.latitude ?? coords.latitude;
+          address.longitude = address.longitude ?? coords.longitude;
+        }
+      }
 
       const savedAddress = await addressRepository.save(
         addressRepository.create({
@@ -261,10 +270,21 @@ export class DistributionPointService {
         distributionPoint.address.numero = address.numero;
       if (address.complemento !== undefined)
         distributionPoint.address.complemento = address.complemento ?? null;
-      if (address.latitude !== undefined)
+
+      if (address.latitude !== undefined) {
         distributionPoint.address.latitude = address.latitude ?? null;
-      if (address.longitude !== undefined)
+      }
+      if (address.longitude !== undefined) {
         distributionPoint.address.longitude = address.longitude ?? null;
+      }
+
+      if (address.latitude === undefined && address.longitude === undefined) {
+        const coords = await getCoordinates(distributionPoint.address);
+        if (coords) {
+          distributionPoint.address.latitude = coords.latitude;
+          distributionPoint.address.longitude = coords.longitude;
+        }
+      }
     }
 
     return this.dataSource.transaction(async (transactionManager) => {

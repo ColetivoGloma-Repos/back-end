@@ -39,7 +39,7 @@ export class DonationsService {
   }
 
   async create(userId: string, body: CreateDonationDto): Promise<Donation> {
-    const quantity = Number(body.quantity ?? 0);
+    const quantity = body.quantity;
     if (!Number.isFinite(quantity) || quantity <= 0)
       throw new ConflictException(
         PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
@@ -120,7 +120,7 @@ export class DonationsService {
     });
   }
 
-  async list(userId: string, query: ListDonationsDto) {
+  async list(query: ListDonationsDto, userId?: string) {
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
     const queryBuilder = this.repository
@@ -151,7 +151,9 @@ export class DonationsService {
       );
     }
 
-    queryBuilder.andWhere('donation.userId = :userId', { userId });
+    if (userId) {
+      queryBuilder.andWhere('donation.userId = :userId', { userId });
+    }
 
     if (query.requestedProductId) {
       queryBuilder.andWhere(

@@ -35,11 +35,18 @@ export class DonationController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async list(
+  async listAll(@Query() query: ListDonationsDto) {
+    return this.donationsService.list(query);
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async listMe(
     @CurrentUser() currentUser: CreateUserDto,
     @Query() query: ListDonationsDto,
   ) {
-    return this.donationsService.list(currentUser.id, query);
+    return this.donationsService.list(query, currentUser.id);
   }
 
   @Delete(':donationId')

@@ -38,7 +38,6 @@ export class PointRequestedProductsController {
   }
 
   @Get()
-  @ApiBearerAuth()
   async list(@Query() query: ListPointRequestedProductsDto) {
     return this.pointRequestedProductsService.list(query);
   }
