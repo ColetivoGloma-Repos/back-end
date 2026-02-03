@@ -38,7 +38,7 @@ export class DistributionPointService {
 
   async create(
     body: CreateDistributionPointDto,
-    options: { roles?: EAuthRoles[]; userId?: string },
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<DistributionPoint> {
     const { roles, userId } = options;
     const isAdmin = roles?.includes(EAuthRoles.ADMIN);
@@ -236,7 +236,7 @@ export class DistributionPointService {
   async update(
     distributionPointId: string,
     body: UpdateDistributionPointDto,
-    options: { roles?: EAuthRoles[]; userId?: string },
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<DistributionPoint> {
     const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
@@ -337,7 +337,7 @@ export class DistributionPointService {
 
   async remove(
     distributionPointId: string,
-    options: { roles?: EAuthRoles[]; userId?: string },
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<{ ok: true }> {
     const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
