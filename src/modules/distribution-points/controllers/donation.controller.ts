@@ -12,10 +12,15 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { DonationsService } from '../services/donation.service';
-import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
+import {
+  CreateDonationDto,
+  DeleteDonationDto,
+  ListDonationsDto,
+} from '../dto/donation';
 import { Donation } from '../entities/donation.entity';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 
 @ApiTags('DistributionPointDonations')
 @Controller('/distribution-point/donation')
@@ -25,43 +30,53 @@ export class DonationController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('admin', 'user')
   async create(
     @CurrentUser() currentUser: CreateUserDto,
     @Body() body: CreateDonationDto,
   ): Promise<Donation> {
-    return this.donationsService.create(currentUser.id, body);
+    return this.donationsService.create(body, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Get()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  async listAll(@Query() query: ListDonationsDto) {
-    return this.donationsService.list(query);
-  }
-
-  @Get('me')
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
-  async listMe(
+  @Roles('coordinator', 'admin', 'user')
+  async listAll(
     @CurrentUser() currentUser: CreateUserDto,
     @Query() query: ListDonationsDto,
   ) {
-    return this.donationsService.list(query, currentUser.id);
+    return this.donationsService.list(query, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Delete(':donationId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin', 'user')
   async cancel(
     @CurrentUser() currentUser: CreateUserDto,
     @Param('donationId') donationId: string,
+    @Query() query: DeleteDonationDto,
   ): Promise<{ ok: true }> {
-    return this.donationsService.cancel(currentUser.id, donationId);
+    return this.donationsService.cancel(
+      { ...query, donationId },
+      {
+        roles: currentUser.roles,
+        userId: currentUser.id,
+      },
+    );
   }
 
   @Patch(':donationId/delivered')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async confirmDeliveryAllDonations(
     @Param('donationId') donationId: string,
   ): Promise<Donation> {

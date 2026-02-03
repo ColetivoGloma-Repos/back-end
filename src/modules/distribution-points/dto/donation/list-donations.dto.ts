@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { QueryRequest } from 'src/common/dto/query';
 import { DonationStatus } from '../../shared';
 import { CommonMessagesHelper } from 'src/common/helpers/common-messages.helper';
@@ -54,4 +54,15 @@ export class ListDonationsDto extends QueryRequest {
     message: CommonMessagesHelper.FIELD_INVALID_ENUM('excludeStatus'),
   })
   excludeStatus?: DonationStatus;
+
+  @ApiPropertyOptional({
+    example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab',
+    format: 'uuid',
+    description: 'ID do usuário proprietário (apenas para administradores)',
+  })
+  @IsOptional()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('userId', 'string'),
+  })
+  userId?: string;
 }

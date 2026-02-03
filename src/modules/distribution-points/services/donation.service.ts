@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
 import { buildPagination } from 'src/common/helpers';
+import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
 @Injectable()
 export class DonationsService {
@@ -38,15 +40,32 @@ export class DonationsService {
     return RequestedProductStatus.OPEN;
   }
 
-  async create(userId: string, body: CreateDonationDto): Promise<Donation> {
+  async create(
+    body: CreateDonationDto,
+    options?: { roles?: EAuthRoles[]; userId?: string },
+  ): Promise<Donation> {
     const quantity = body.quantity;
     if (!Number.isFinite(quantity) || quantity <= 0)
       throw new ConflictException(
         PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
       );
 
+    const { roles, userId: authUserId } = options || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+
+    let donorId = authUserId;
+
+    if (body.userId) {
+      if (!isAdmin) {
+        throw new ForbiddenException(
+          'Apenas administradores podem criar doações em nome de outros usuários.',
+        );
+      }
+      donorId = body.userId;
+    }
+
     const user = await this.usersRepository.findOne({
-      where: { id: userId },
+      where: { id: donorId },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado.');
 
@@ -95,7 +114,7 @@ export class DonationsService {
       }
 
       const donation = donationRepository.create({
-        userId,
+        userId: donorId,
         requestedProductId: body.requestedProductId,
         distributionPointId: requestedProduct.distributionPointId,
         quantity,
@@ -120,7 +139,10 @@ export class DonationsService {
     });
   }
 
-  async list(query: ListDonationsDto, userId?: string) {
+  async list(
+    query: ListDonationsDto,
+    options?: { roles?: EAuthRoles[]; userId?: string },
+  ) {
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
     const queryBuilder = this.repository
@@ -150,6 +172,12 @@ export class DonationsService {
         },
       );
     }
+
+    const { roles, userId: authUserId } = options || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isCoordinator = roles?.includes(EAuthRoles.ADMIN);
+
+    const userId = isAdmin || isCoordinator ? query.userId : authUserId;
 
     if (userId) {
       queryBuilder.andWhere('donation.userId = :userId', { userId });
@@ -222,7 +250,10 @@ export class DonationsService {
     };
   }
 
-  async cancel(userId: string, donationId: string): Promise<{ ok: true }> {
+  async cancel(
+    query: { donationId: string; userId?: string },
+    options?: { roles?: EAuthRoles[]; userId?: string },
+  ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(
@@ -230,11 +261,17 @@ export class DonationsService {
       );
 
       const donation = await donationRepository.findOne({
-        where: { id: donationId },
+        where: { id: query.donationId },
       });
       if (!donation) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
       }
+
+      const { roles, userId: authUserId } = options || {};
+      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+      const isCoordinator = roles?.includes(EAuthRoles.ADMIN);
+
+      const userId = isAdmin || isCoordinator ? query.userId : authUserId;
 
       if (donation.userId !== userId) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);

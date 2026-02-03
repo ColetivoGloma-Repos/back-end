@@ -1,5 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsUUID, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { CommonMessagesHelper } from 'src/common/helpers';
 
 export class CreateDonationDto {
@@ -29,4 +36,15 @@ export class CreateDonationDto {
   })
   @Min(1, { message: CommonMessagesHelper.NUMBER_MIN('quantity', 1) })
   quantity!: number;
+
+  @ApiPropertyOptional({
+    example: '9f3a1e2c-3b4c-5d6e-7f80-1234567890ab',
+    format: 'uuid',
+    description: 'ID do usuário proprietário (apenas para administradores)',
+  })
+  @IsOptional()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('userId', 'string'),
+  })
+  userId?: string;
 }
