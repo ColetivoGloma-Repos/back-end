@@ -46,7 +46,9 @@ export class DistributionPointService {
     const ownerId = isAdmin && body.userId ? body.userId : userId;
 
     if (!ownerId) {
-      throw new ForbiddenException('Usuário inválido para criação do ponto.');
+      throw new ForbiddenException(
+        DistributionPointsMessagesHelper.INVALID_USER_FOR_CREATION,
+      );
     }
 
     const requestedProducts = Array.isArray(body.requestedProducts)
@@ -253,7 +255,7 @@ export class DistributionPointService {
 
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException(
-        'Apenas o proprietário ou um administrador podem atualizar este ponto de distribuição.',
+        DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE,
       );
     }
 
@@ -353,7 +355,7 @@ export class DistributionPointService {
 
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException(
-        'Apenas o proprietário ou um administrador podem deletar este ponto de distribuição.',
+        DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE,
       );
     }
 

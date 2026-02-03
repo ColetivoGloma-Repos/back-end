@@ -58,7 +58,7 @@ export class DonationsService {
     if (body.userId) {
       if (!isAdmin) {
         throw new ForbiddenException(
-          'Apenas administradores podem criar doações em nome de outros usuários.',
+          DonationMessagesHelper.ONLY_ADMIN_CAN_CREATE_FOR_OTHERS,
         );
       }
       donorId = body.userId;
@@ -67,7 +67,7 @@ export class DonationsService {
     const user = await this.usersRepository.findOne({
       where: { id: donorId },
     });
-    if (!user) throw new NotFoundException('Usuário não encontrado.');
+    if (!user) throw new NotFoundException(DonationMessagesHelper.USER_NOT_FOUND);
 
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(

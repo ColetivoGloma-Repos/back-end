@@ -70,7 +70,7 @@ export class PointRequestedProductsService {
 
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException(
-        'Apenas o proprietário ou um administrador podem criar solicitações para este ponto.',
+        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CREATE,
       );
     }
 
@@ -367,7 +367,7 @@ export class PointRequestedProductsService {
 
       if (!isAdmin && !isOwner) {
         throw new ForbiddenException(
-          'Apenas o proprietário ou um administrador podem atualizar esta solicitação.',
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE,
         );
       }
 
@@ -458,7 +458,7 @@ export class PointRequestedProductsService {
 
     if (!isAdmin && !isOwner) {
       throw new ForbiddenException(
-        'Apenas o proprietário ou um administrador podem deletar esta solicitação.',
+        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE,
       );
     }
 
@@ -577,7 +577,7 @@ export class PointRequestedProductsService {
 
       if (!isAdmin && !isOwner) {
         throw new ForbiddenException(
-          'Apenas o proprietário ou um administrador podem confirmar a entrega desta solicitação.',
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CONFIRM_DELIVERY,
         );
       }
 
