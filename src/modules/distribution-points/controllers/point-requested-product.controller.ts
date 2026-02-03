@@ -20,6 +20,7 @@ import {
 } from '../dto/point-requested-product';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
+import { Roles } from 'src/modules/auth/decorators/roles.decorator';
 
 @ApiTags('DistributionPointRequestedProducts')
 @Controller('distribution-point/requested-products')
@@ -31,10 +32,15 @@ export class PointRequestedProductsController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async create(
+    @CurrentUser() currentUser: CreateUserDto,
     @Body() body: CreatePointRequestedProductDto,
   ): Promise<PointRequestedProduct[]> {
-    return this.pointRequestedProductsService.create(body);
+    return this.pointRequestedProductsService.create(body, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Get()
@@ -54,20 +60,30 @@ export class PointRequestedProductsController {
   @Patch(':requestedProductId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async update(
+    @CurrentUser() currentUser: CreateUserDto,
     @Param('requestedProductId') requestedProductId: string,
     @Body() body: UpdatePointRequestedProductDto,
   ): Promise<PointRequestedProduct> {
-    return this.pointRequestedProductsService.update(requestedProductId, body);
+    return this.pointRequestedProductsService.update(requestedProductId, body, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Delete(':requestedProductId')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async remove(
+    @CurrentUser() currentUser: CreateUserDto,
     @Param('requestedProductId') requestedProductId: string,
   ): Promise<{ ok: true }> {
-    return this.pointRequestedProductsService.remove(requestedProductId);
+    return this.pointRequestedProductsService.remove(requestedProductId, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
   @Delete(':requestedProductId/donations')
@@ -86,11 +102,14 @@ export class PointRequestedProductsController {
   @Patch(':requestedProductId/delivered')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
   async confirmDeliveryAllDonations(
+    @CurrentUser() currentUser: CreateUserDto,
     @Param('requestedProductId') requestedProductId: string,
   ): Promise<{ ok: true }> {
-    return this.pointRequestedProductsService.confirmDeliveryAllDonations(
-      requestedProductId,
-    );
+    return this.pointRequestedProductsService.delivered(requestedProductId, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 }

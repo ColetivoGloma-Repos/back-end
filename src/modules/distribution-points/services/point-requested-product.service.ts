@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -23,6 +24,7 @@ import {
 import { ProductsService } from 'src/modules/products/products.service';
 import { Donation } from '../entities';
 import { buildPagination } from 'src/common/helpers';
+import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
 @Injectable()
 export class PointRequestedProductsService {
@@ -50,6 +52,7 @@ export class PointRequestedProductsService {
 
   async create(
     body: CreatePointRequestedProductDto,
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.pointsRepository.findOne({
       where: { id: body.distributionPointId },
@@ -58,6 +61,16 @@ export class PointRequestedProductsService {
     if (!distributionPoint) {
       throw new NotFoundException(
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+      );
+    }
+
+    const { roles, userId } = options || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException(
+        'Apenas o proprietário ou um administrador podem criar solicitações para este ponto.',
       );
     }
 
@@ -316,12 +329,15 @@ export class PointRequestedProductsService {
   async update(
     requestedProductId: string,
     body: UpdatePointRequestedProductDto,
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<PointRequestedProduct> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
       const productRepository = transactionManager.getRepository(Product);
+      const distributionPointRepository =
+        transactionManager.getRepository(DistributionPoint);
 
       const requestedPoint = await requestedProductRepository
         .createQueryBuilder('requestedProduct')
@@ -332,6 +348,26 @@ export class PointRequestedProductsService {
       if (!requestedPoint) {
         throw new NotFoundException(
           PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
+
+      const distributionPoint = await distributionPointRepository.findOne({
+        where: { id: requestedPoint.distributionPointId },
+      });
+
+      if (!distributionPoint) {
+        throw new NotFoundException(
+          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        );
+      }
+
+      const { roles, userId } = options || {};
+      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+      const isOwner = distributionPoint.ownerId === userId;
+
+      if (!isAdmin && !isOwner) {
+        throw new ForbiddenException(
+          'Apenas o proprietário ou um administrador podem atualizar esta solicitação.',
         );
       }
 
@@ -395,7 +431,10 @@ export class PointRequestedProductsService {
     });
   }
 
-  async remove(requestedProductId: string): Promise<{ ok: true }> {
+  async remove(
+    requestedProductId: string,
+    options?: { roles?: EAuthRoles[]; userId?: string },
+  ): Promise<{ ok: true }> {
     const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
     });
@@ -403,6 +442,25 @@ export class PointRequestedProductsService {
       throw new NotFoundException(
         PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
       );
+
+    const distributionPoint = await this.pointsRepository.findOne({
+      where: { id: requestedPoint.distributionPointId },
+    });
+    if (!distributionPoint) {
+      throw new NotFoundException(
+        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+      );
+    }
+
+    const { roles, userId } = options || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException(
+        'Apenas o proprietário ou um administrador podem deletar esta solicitação.',
+      );
+    }
 
     requestedPoint.status = RequestedProductStatus.REMOVED;
     requestedPoint.closesAt = new Date();
@@ -479,14 +537,17 @@ export class PointRequestedProductsService {
     });
   }
 
-  async confirmDeliveryAllDonations(
+  async delivered(
     requestedProductId: string,
+    options?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
       const donationRepository = transactionManager.getRepository(Donation);
+      const distributionPointRepository =
+        transactionManager.getRepository(DistributionPoint);
 
       const requestedProduct = await requestedProductRepository
         .createQueryBuilder('requestedProduct')
@@ -497,6 +558,26 @@ export class PointRequestedProductsService {
       if (!requestedProduct) {
         throw new NotFoundException(
           PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+        );
+      }
+
+      const distributionPoint = await distributionPointRepository.findOne({
+        where: { id: requestedProduct.distributionPointId },
+      });
+
+      if (!distributionPoint) {
+        throw new NotFoundException(
+          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        );
+      }
+
+      const { roles, userId } = options || {};
+      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+      const isOwner = distributionPoint.ownerId === userId;
+
+      if (!isAdmin && !isOwner) {
+        throw new ForbiddenException(
+          'Apenas o proprietário ou um administrador podem confirmar a entrega desta solicitação.',
         );
       }
 
