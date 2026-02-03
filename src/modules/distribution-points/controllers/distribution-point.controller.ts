@@ -49,10 +49,9 @@ export class DistributionPointController {
 
   @Get(':id([0-9a-fA-F-]{36})')
   async findById(
-    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
-    distributionPointId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<DistributionPoint> {
-    return this.service.findById(distributionPointId);
+    return this.service.findById(id);
   }
 
   @Patch(':id([0-9a-fA-F-]{36})')
@@ -61,11 +60,10 @@ export class DistributionPointController {
   @Roles('coordinator', 'admin')
   async update(
     @CurrentUser() currentUser: CreateUserDto,
-    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
-    distributionPointId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() body: UpdateDistributionPointDto,
   ): Promise<DistributionPoint> {
-    return this.service.update(distributionPointId, body, {
+    return this.service.update(id, body, {
       roles: currentUser.roles,
       userId: currentUser.id,
     });
@@ -77,10 +75,9 @@ export class DistributionPointController {
   @Roles('coordinator', 'admin')
   async remove(
     @CurrentUser() currentUser: CreateUserDto,
-    @Param('distributionPointId', new ParseUUIDPipe({ version: '4' }))
-    distributionPointId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<{ ok: true }> {
-    return this.service.remove(distributionPointId, {
+    return this.service.remove(id, {
       roles: currentUser.roles,
       userId: currentUser.id,
     });
