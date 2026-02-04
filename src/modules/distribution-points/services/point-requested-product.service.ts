@@ -27,6 +27,10 @@ import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
 type SecurityAction = 'create' | 'update' | 'delete' | 'delivery';
+interface ISecurity {
+  roles?: EAuthRoles[];
+  userId?: string;
+}
 
 @Injectable()
 export class PointRequestedProductsService {
@@ -45,7 +49,7 @@ export class PointRequestedProductsService {
   private validateSecurity(
     distributionPoint: DistributionPoint,
     action: SecurityAction,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): void {
     const { roles, userId } = security || {};
 
@@ -83,7 +87,7 @@ export class PointRequestedProductsService {
 
   async create(
     body: CreatePointRequestedProductDto,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.pointsRepository.findOne({
       where: { id: body.distributionPointId },
@@ -352,7 +356,7 @@ export class PointRequestedProductsService {
   async update(
     requestedProductId: string,
     body: UpdatePointRequestedProductDto,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): Promise<PointRequestedProduct> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
@@ -448,7 +452,7 @@ export class PointRequestedProductsService {
 
   async remove(
     requestedProductId: string,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): Promise<{ ok: true }> {
     const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
@@ -546,7 +550,7 @@ export class PointRequestedProductsService {
 
   async delivered(
     requestedProductId: string,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
