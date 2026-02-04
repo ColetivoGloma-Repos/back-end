@@ -26,6 +26,8 @@ import { Donation } from '../entities';
 import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
+type SecurityAction = 'create' | 'update' | 'delete' | 'delivery';
+
 @Injectable()
 export class PointRequestedProductsService {
   constructor(
@@ -40,6 +42,35 @@ export class PointRequestedProductsService {
     private readonly productsService: ProductsService,
   ) {}
 
+  private validateSecurity(
+    distributionPoint: DistributionPoint,
+    action: SecurityAction,
+    security?: { roles?: EAuthRoles[]; userId?: string },
+  ): void {
+    const { roles, userId } = security || {};
+
+    const hasAuthData = roles !== undefined || userId !== undefined;
+    if (!hasAuthData) return;
+
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = userId && distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      const messages = {
+        create:
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CREATE,
+        update:
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE,
+        delete:
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE,
+        delivery:
+          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CONFIRM_DELIVERY,
+      };
+
+      throw new ForbiddenException(messages[action]);
+    }
+  }
+
   computeStatus(
     requestedQuantity: number,
     donatedQuantity: number,
@@ -52,7 +83,7 @@ export class PointRequestedProductsService {
 
   async create(
     body: CreatePointRequestedProductDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.pointsRepository.findOne({
       where: { id: body.distributionPointId },
@@ -64,15 +95,7 @@ export class PointRequestedProductsService {
       );
     }
 
-    const { roles, userId } = options || {};
-    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-    const isOwner = distributionPoint.ownerId === userId;
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException(
-        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CREATE,
-      );
-    }
+    this.validateSecurity(distributionPoint, 'create', security);
 
     const requestedProducts = Array.isArray(body.requestedProducts)
       ? body.requestedProducts
@@ -329,7 +352,7 @@ export class PointRequestedProductsService {
   async update(
     requestedProductId: string,
     body: UpdatePointRequestedProductDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<PointRequestedProduct> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
@@ -361,15 +384,7 @@ export class PointRequestedProductsService {
         );
       }
 
-      const { roles, userId } = options || {};
-      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-      const isOwner = distributionPoint.ownerId === userId;
-
-      if (!isAdmin && !isOwner) {
-        throw new ForbiddenException(
-          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE,
-        );
-      }
+      this.validateSecurity(distributionPoint, 'update', security);
 
       if (body.requestedQuantity !== undefined) {
         const donated = requestedPoint.donatedQuantity;
@@ -433,7 +448,7 @@ export class PointRequestedProductsService {
 
   async remove(
     requestedProductId: string,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<{ ok: true }> {
     const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
@@ -452,15 +467,7 @@ export class PointRequestedProductsService {
       );
     }
 
-    const { roles, userId } = options || {};
-    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-    const isOwner = distributionPoint.ownerId === userId;
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException(
-        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE,
-      );
-    }
+    this.validateSecurity(distributionPoint, 'delete', security);
 
     requestedPoint.status = RequestedProductStatus.REMOVED;
     requestedPoint.closesAt = new Date();
@@ -539,7 +546,7 @@ export class PointRequestedProductsService {
 
   async delivered(
     requestedProductId: string,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
@@ -571,15 +578,7 @@ export class PointRequestedProductsService {
         );
       }
 
-      const { roles, userId } = options || {};
-      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-      const isOwner = distributionPoint.ownerId === userId;
-
-      if (!isAdmin && !isOwner) {
-        throw new ForbiddenException(
-          PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CONFIRM_DELIVERY,
-        );
-      }
+      this.validateSecurity(distributionPoint, 'delivery', security);
 
       const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
       const deliveredQuantity = Number(requestedProduct.deliveredQuantity ?? 0);
