@@ -19,6 +19,7 @@ import {
 import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
 import { DistributionPoint } from '../entities';
+import { PointRequestedProductsService } from './point-requested-product.service';
 
 type SecurityActionType = 'cancel' | 'delivery';
 interface ISecurity {
@@ -36,6 +37,8 @@ export class DonationsService {
 
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+
+    private readonly requestedProductService: PointRequestedProductsService,
   ) {}
 
   private validatePermission(
@@ -68,16 +71,6 @@ export class DonationsService {
         throw new ForbiddenException(messages['delivery']);
       }
     }
-  }
-
-  private computeStatus(
-    requestedQuantity: number,
-    donatedQuantity: number,
-  ): RequestedProductStatus {
-    if (requestedQuantity <= 0) return RequestedProductStatus.FULL;
-    if (donatedQuantity >= requestedQuantity)
-      return RequestedProductStatus.FULL;
-    return RequestedProductStatus.OPEN;
   }
 
   async create(
@@ -163,7 +156,10 @@ export class DonationsService {
       const saved = await donationRepository.save(donation);
 
       const nextDonated = donatedQuantity + quantity;
-      const nextStatus = this.computeStatus(requestedQuantity, nextDonated);
+      const nextStatus = this.requestedProductService.computeStatus(
+        requestedQuantity,
+        nextDonated,
+      );
 
       requestedProduct.donatedQuantity = nextDonated;
       requestedProduct.status = nextStatus;
@@ -365,7 +361,10 @@ export class DonationsService {
       const nextStatus =
         request.status === RequestedProductStatus.REMOVED
           ? RequestedProductStatus.REMOVED
-          : this.computeStatus(requestedQuantity, nextDonated);
+          : this.requestedProductService.computeStatus(
+              requestedQuantity,
+              nextDonated,
+            );
 
       request.donatedQuantity = nextDonated;
       request.status = nextStatus;
