@@ -12,11 +12,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { DonationsService } from '../services/donation.service';
-import {
-  CreateDonationDto,
-  DeleteDonationDto,
-  ListDonationsDto,
-} from '../dto/donation';
+import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
 import { Donation } from '../entities/donation.entity';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
@@ -55,31 +51,31 @@ export class DonationController {
     });
   }
 
-  @Delete(':donationId')
+  @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Roles('coordinator', 'admin', 'user')
   async cancel(
     @CurrentUser() currentUser: CreateUserDto,
-    @Param('donationId') donationId: string,
-    @Query() query: DeleteDonationDto,
+    @Param('id') id: string,
   ): Promise<{ ok: true }> {
-    return this.donationsService.cancel(
-      { ...query, donationId },
-      {
-        roles: currentUser.roles,
-        userId: currentUser.id,
-      },
-    );
+    return this.donationsService.cancel(id, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 
-  @Patch(':donationId/delivered')
+  @Patch(':id/delivered')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Roles('coordinator', 'admin')
   async confirmDeliveryAllDonations(
-    @Param('donationId') donationId: string,
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('id') id: string,
   ): Promise<Donation> {
-    return this.donationsService.delivered(donationId);
+    return this.donationsService.delivered(id, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
   }
 }

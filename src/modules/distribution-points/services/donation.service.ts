@@ -5,18 +5,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository } from 'typeorm';
 import { Donation } from '../entities/donation.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { DonationStatus, RequestedProductStatus } from '../shared';
 import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
 import {
+  DistributionPointsMessagesHelper,
   DonationMessagesHelper,
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
 import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
+import { DistributionPoint } from '../entities';
+
+type SecurityActionType = 'cancel' | 'delivery';
+interface ISecurity {
+  roles?: EAuthRoles[];
+  userId?: string;
+}
 
 @Injectable()
 export class DonationsService {
@@ -30,6 +38,38 @@ export class DonationsService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
+  private validatePermission(
+    distributionPoint: DistributionPoint,
+    donation: Donation,
+    action: SecurityActionType,
+    security?: ISecurity,
+  ): void {
+    const { roles, userId } = security || {};
+
+    if (!userId) return;
+
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isCoordinator = distributionPoint.ownerId === userId;
+
+    const messages = {
+      cancel: DonationMessagesHelper.DONATION_NOT_FOUND,
+      delivery:
+        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CONFIRM_DELIVERY,
+    };
+
+    if (action === 'cancel') {
+      const isDonor = donation.userId === userId;
+
+      if (!isAdmin && !isCoordinator && !isDonor) {
+        throw new NotFoundException(messages['cancel']);
+      }
+    } else if (action === 'delivery') {
+      if (!isAdmin && !isCoordinator) {
+        throw new ForbiddenException(messages['delivery']);
+      }
+    }
+  }
+
   private computeStatus(
     requestedQuantity: number,
     donatedQuantity: number,
@@ -42,7 +82,7 @@ export class DonationsService {
 
   async create(
     body: CreateDonationDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<Donation> {
     const quantity = body.quantity;
     if (!Number.isFinite(quantity) || quantity <= 0)
@@ -50,24 +90,23 @@ export class DonationsService {
         PointRequestedProductsMessagesHelper.INVALID_QUANTITY_SOLICITED,
       );
 
-    const { roles, userId: authUserId } = options || {};
+    const { roles, userId: authUserId } = security || {};
     const isAdmin = roles?.includes(EAuthRoles.ADMIN);
 
-    let donorId = authUserId;
+    const donorId = body.userId || authUserId;
+    const isThirdPartyDonation = authUserId && donorId !== authUserId;
 
-    if (body.userId) {
-      if (!isAdmin) {
-        throw new ForbiddenException(
-          DonationMessagesHelper.ONLY_ADMIN_CAN_CREATE_FOR_OTHERS,
-        );
-      }
-      donorId = body.userId;
+    if (isThirdPartyDonation && !isAdmin) {
+      throw new ForbiddenException(
+        DonationMessagesHelper.ONLY_ADMIN_CAN_CREATE_FOR_OTHERS,
+      );
     }
 
     const user = await this.usersRepository.findOne({
       where: { id: donorId },
     });
-    if (!user) throw new NotFoundException(DonationMessagesHelper.USER_NOT_FOUND);
+    if (!user)
+      throw new NotFoundException(DonationMessagesHelper.USER_NOT_FOUND);
 
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
@@ -141,7 +180,7 @@ export class DonationsService {
 
   async list(
     query: ListDonationsDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ) {
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
@@ -160,6 +199,8 @@ export class DonationsService {
         'product.id',
         'product.name',
         'product.unit',
+        'point.id',
+        'point.title',
       ])
       .take(pagination.take)
       .skip(pagination.skip);
@@ -167,29 +208,21 @@ export class DonationsService {
     if (query.distributionPointId) {
       queryBuilder.andWhere(
         'donation.distributionPointId = :distributionPointId',
-        {
-          distributionPointId: query.distributionPointId,
-        },
+        { distributionPointId: query.distributionPointId },
       );
-    }
-
-    const { roles, userId: authUserId } = options || {};
-    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-    const isCoordinator = roles?.includes(EAuthRoles.ADMIN);
-
-    const userId = isAdmin || isCoordinator ? query.userId : authUserId;
-
-    if (userId) {
-      queryBuilder.andWhere('donation.userId = :userId', { userId });
     }
 
     if (query.requestedProductId) {
       queryBuilder.andWhere(
         'donation.requestedProductId = :requestedProductId',
-        {
-          requestedProductId: query.requestedProductId,
-        },
+        { requestedProductId: query.requestedProductId },
       );
+    }
+
+    if (query.userId) {
+      queryBuilder.andWhere('donation.userId = :targetUserId', {
+        targetUserId: query.userId,
+      });
     }
 
     if (query.status) {
@@ -209,8 +242,28 @@ export class DonationsService {
     if (query.q?.trim()) {
       const q = query.q.trim();
       queryBuilder.andWhere(
-        '(product.name ILIKE :q OR product.slug ILIKE :q OR point.title ILIKE :q OR user.name ILIKE :q OR user.email ILIKE :q)',
-        { q: `%${q}%` },
+        new Brackets((qb) => {
+          qb.where('product.name ILIKE :q', { q: `%${q}%` })
+            .orWhere('product.slug ILIKE :q', { q: `%${q}%` })
+            .orWhere('point.title ILIKE :q', { q: `%${q}%` })
+            .orWhere('user.name ILIKE :q', { q: `%${q}%` })
+            .orWhere('user.email ILIKE :q', { q: `%${q}%` });
+        }),
+      );
+    }
+
+    const { roles, userId: authUserId } = security || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isInternal = !authUserId;
+
+    if (!isAdmin && !isInternal) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where('donation.userId = :authUserId', { authUserId }).orWhere(
+            'point.ownerId = :authUserId',
+            { authUserId },
+          );
+        }),
       );
     }
 
@@ -226,7 +279,6 @@ export class DonationsService {
 
     const sortField = Object.keys(pagination.order)[0];
     const sortDir = pagination.order[sortField];
-
     const sortBy = allowedSortBy.has(sortField) ? sortField : 'createdAt';
 
     if (sortBy === 'productName') {
@@ -251,31 +303,39 @@ export class DonationsService {
   }
 
   async cancel(
-    query: { donationId: string; userId?: string },
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    donationId: string,
+    security?: { roles?: EAuthRoles[]; userId?: string },
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
+      const distributionPointRepository =
+        transactionManager.getRepository(DistributionPoint);
 
-      const donation = await donationRepository.findOne({
-        where: { id: query.donationId },
-      });
+      const donation = await donationRepository
+        .createQueryBuilder('donation')
+        .setLock('pessimistic_write')
+        .where('donation.id = :id', { id: donationId })
+        .getOne();
+
       if (!donation) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
       }
 
-      const { roles, userId: authUserId } = options || {};
-      const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-      const isCoordinator = roles?.includes(EAuthRoles.ADMIN);
+      const distributionPoint = await distributionPointRepository.findOne({
+        where: { id: donation.distributionPointId },
+        select: ['id', 'ownerId'],
+      });
 
-      const userId = isAdmin || isCoordinator ? query.userId : authUserId;
-
-      if (donation.userId !== userId) {
-        throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
+      if (!distributionPoint) {
+        throw new NotFoundException(
+          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        );
       }
+
+      this.validatePermission(distributionPoint, donation, 'cancel', security);
 
       if (donation.status !== DonationStatus.ACTIVE) {
         return { ok: true };
@@ -295,12 +355,13 @@ export class DonationsService {
 
       const requestedQuantity = Number(request.requestedQuantity ?? 0);
       const donatedQuantity = Number(request.donatedQuantity ?? 0);
-      const quantity = Number(donation.quantity ?? 0);
+      const quantityToCancel = Number(donation.quantity ?? 0);
 
       donation.status = DonationStatus.CANCELED;
       await donationRepository.save(donation);
 
-      const nextDonated = Math.max(0, donatedQuantity - quantity);
+      const nextDonated = Math.max(0, donatedQuantity - quantityToCancel);
+
       const nextStatus =
         request.status === RequestedProductStatus.REMOVED
           ? RequestedProductStatus.REMOVED
@@ -308,6 +369,7 @@ export class DonationsService {
 
       request.donatedQuantity = nextDonated;
       request.status = nextStatus;
+
       request.closesAt =
         nextStatus === RequestedProductStatus.FULL
           ? (request.closesAt ?? new Date())
@@ -319,12 +381,17 @@ export class DonationsService {
     });
   }
 
-  async delivered(donationId: string): Promise<Donation> {
+  async delivered(
+    donationId: string,
+    security?: { roles?: EAuthRoles[]; userId?: string },
+  ): Promise<Donation> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(
         PointRequestedProduct,
       );
+      const distributionPointRepository =
+        transactionManager.getRepository(DistributionPoint);
 
       const donation = await donationRepository
         .createQueryBuilder('donation')
@@ -335,6 +402,24 @@ export class DonationsService {
       if (!donation) {
         throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
       }
+
+      const distributionPoint = await distributionPointRepository.findOne({
+        where: { id: donation.distributionPointId },
+        select: ['id', 'ownerId'],
+      });
+
+      if (!distributionPoint) {
+        throw new NotFoundException(
+          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        );
+      }
+
+      this.validatePermission(
+        distributionPoint,
+        donation,
+        'delivery',
+        security,
+      );
 
       if (donation.status === DonationStatus.CANCELED) {
         throw new ConflictException(DonationMessagesHelper.DONATION_NOT_FOUND);
