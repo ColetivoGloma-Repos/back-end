@@ -23,6 +23,12 @@ import { buildPagination } from 'src/common/helpers';
 import { getCoordinates } from '../../../common/utils';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
 
+type SecurityActionType = 'update' | 'delete';
+interface ISecurity {
+  roles?: EAuthRoles[];
+  userId?: string;
+}
+
 @Injectable()
 export class DistributionPointService {
   constructor(
@@ -36,11 +42,34 @@ export class DistributionPointService {
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
 
+  private validateSecurity(
+    distributionPoint: DistributionPoint,
+    action: SecurityActionType,
+    security?: ISecurity,
+  ): void {
+    const { roles, userId } = security || {};
+
+    const hasAuthData = roles !== undefined || userId !== undefined;
+    if (!hasAuthData) return;
+
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isOwner = userId && distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isOwner) {
+      const message =
+        action === 'update'
+          ? DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE
+          : DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE;
+
+      throw new ForbiddenException(message);
+    }
+  }
+
   async create(
     body: CreateDistributionPointDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
   ): Promise<DistributionPoint> {
-    const { roles, userId } = options;
+    const { roles, userId } = security || {};
     const isAdmin = roles?.includes(EAuthRoles.ADMIN);
 
     const ownerId = isAdmin && body.userId ? body.userId : userId;
@@ -249,15 +278,7 @@ export class DistributionPointService {
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
 
-    const { roles, userId } = options;
-    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-    const isOwner = distributionPoint.ownerId === userId;
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException(
-        DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_UPDATE,
-      );
-    }
+    this.validateSecurity(distributionPoint, 'update', options);
 
     if (body.title !== undefined) {
       distributionPoint.title = body.title;
@@ -339,7 +360,7 @@ export class DistributionPointService {
 
   async remove(
     distributionPointId: string,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    options?: ISecurity,
   ): Promise<{ ok: true }> {
     const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
@@ -349,15 +370,7 @@ export class DistributionPointService {
         DistributionPointsMessagesHelper.POINT_NOT_FOUND,
       );
 
-    const { roles, userId } = options;
-    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
-    const isOwner = distributionPoint.ownerId === userId;
-
-    if (!isAdmin && !isOwner) {
-      throw new ForbiddenException(
-        DistributionPointsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_DELETE,
-      );
-    }
+    this.validateSecurity(distributionPoint, 'delete', options);
 
     await this.repository.delete({ id: distributionPointId });
 
