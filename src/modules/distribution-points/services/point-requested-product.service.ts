@@ -38,21 +38,13 @@ export class PointRequestedProductsService {
     private readonly dataSource: DataSource,
 
     @InjectRepository(PointRequestedProduct)
-    private readonly _repository: Repository<PointRequestedProduct>,
+    private readonly repository: Repository<PointRequestedProduct>,
 
     @InjectRepository(DistributionPoint)
     private readonly distributionPointRepository: Repository<DistributionPoint>,
 
     private readonly productsService: ProductsService,
   ) {}
-
-  private getRepository(
-    manager?: EntityManager,
-  ): Repository<PointRequestedProduct> {
-    return manager
-      ? manager.getRepository(PointRequestedProduct)
-      : this._repository;
-  }
 
   private validateSecurity(
     distributionPoint: DistributionPoint,
@@ -96,7 +88,6 @@ export class PointRequestedProductsService {
   async create(
     body: CreatePointRequestedProductDto,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<PointRequestedProduct[]> {
     const distributionPoint = await this.distributionPointRepository.findOne({
       where: { id: body.distributionPointId },
@@ -264,11 +255,9 @@ export class PointRequestedProductsService {
   }
 
   async list(query: ListPointRequestedProductsDto, manager?: EntityManager) {
-    const repository = this.getRepository(manager);
-
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
-    const queryBuilder = repository
+    const queryBuilder = this.repository
       .createQueryBuilder('requestedProduct')
       .leftJoinAndSelect('requestedProduct.product', 'product')
       .leftJoin('requestedProduct.point', 'point')
@@ -349,13 +338,8 @@ export class PointRequestedProductsService {
     };
   }
 
-  async findById(
-    requestedProductId: string,
-    manager?: EntityManager,
-  ): Promise<PointRequestedProduct> {
-    const repository = this.getRepository(manager);
-
-    const requestedPoint = await repository.findOne({
+  async findById(requestedProductId: string): Promise<PointRequestedProduct> {
+    const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
       relations: { product: true },
     });
@@ -373,7 +357,6 @@ export class PointRequestedProductsService {
     requestedProductId: string,
     body: UpdatePointRequestedProductDto,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<PointRequestedProduct> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(
@@ -470,11 +453,8 @@ export class PointRequestedProductsService {
   async remove(
     requestedProductId: string,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<{ ok: true }> {
-    const repository = this.getRepository(manager);
-
-    const requestedPoint = await repository.findOne({
+    const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
     });
     if (!requestedPoint)
@@ -496,7 +476,7 @@ export class PointRequestedProductsService {
     requestedPoint.status = RequestedProductStatus.REMOVED;
     requestedPoint.closesAt = new Date();
 
-    await repository.save(requestedPoint);
+    await this.repository.save(requestedPoint);
 
     return { ok: true };
   }
@@ -571,7 +551,6 @@ export class PointRequestedProductsService {
   async delivered(
     requestedProductId: string,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const requestedProductRepository = transactionManager.getRepository(

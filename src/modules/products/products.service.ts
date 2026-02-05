@@ -13,12 +13,8 @@ import { ProductMessagesHelper } from './shared';
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private readonly _repository: Repository<Product>,
+    private readonly repository: Repository<Product>,
   ) {}
-
-  private getRepository(manager?: EntityManager): Repository<Product> {
-    return manager ? manager.getRepository(Product) : this._repository;
-  }
 
   normalizeSlug(value: string): string {
     return value
@@ -30,43 +26,35 @@ export class ProductsService {
       .replace(/(^-+)|(-+$)/g, '');
   }
 
-  async create(
-    body: CreateProductDto,
-    manager?: EntityManager,
-  ): Promise<Product> {
-    const repository = this.getRepository(manager);
-
+  async create(body: CreateProductDto): Promise<Product> {
     const slug = this.normalizeSlug(body.slug || body.name);
 
-    const existing = await repository.findOne({ where: { slug } });
+    const existing = await this.repository.findOne({ where: { slug } });
     if (existing)
       throw new ConflictException(
         ProductMessagesHelper.PRODUCT_SLUG_ALREADY_EXISTS,
       );
 
-    const entity = repository.create({
+    const entity = this.repository.create({
       slug,
       name: body.name,
       unit: body.unit ?? null,
       active: body.active ?? true,
     });
 
-    return repository.save(entity);
+    return this.repository.save(entity);
   }
 
   async getOrCreateByName(
     name: string,
     unit?: string | null,
-    manager?: EntityManager,
   ): Promise<Product> {
-    const repository = this.getRepository(manager);
-
     const slug = this.normalizeSlug(name);
 
-    const existing = await repository.findOne({ where: { slug } });
+    const existing = await this.repository.findOne({ where: { slug } });
     if (existing) return existing;
 
-    const entity = repository.create({
+    const entity = this.repository.create({
       slug,
       name: name,
       unit: unit ?? null,
@@ -74,17 +62,15 @@ export class ProductsService {
     });
 
     try {
-      return await repository.save(entity);
+      return await this.repository.save(entity);
     } catch {
-      const retry = await repository.findOne({ where: { slug } });
+      const retry = await this.repository.findOne({ where: { slug } });
       if (retry) return retry;
       throw new ConflictException(ProductMessagesHelper.FAIL_TO_CREATE_PRODUCT);
     }
   }
 
   async list(query: ListProductsDto, manager?: EntityManager) {
-    const repository = this.getRepository(manager);
-
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
     const offset = Math.max(0, Number(query.offset ?? 0));
     const skip = offset;
@@ -100,7 +86,7 @@ export class ProductsService {
       where.name = ILike(`%${search}%`);
     }
 
-    const [items, total] = await repository.findAndCount({
+    const [items, total] = await this.repository.findAndCount({
       where,
       order: { name: 'ASC' },
       take: limit,
@@ -117,32 +103,22 @@ export class ProductsService {
   }
 
   async findById(id: string, manager?: EntityManager): Promise<Product> {
-    const repository = this.getRepository(manager);
-
-    const product = await repository.findOne({ where: { id } });
+    const product = await this.repository.findOne({ where: { id } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
   }
 
   async findBySlug(slug: string, manager?: EntityManager): Promise<Product> {
-    const repository = this.getRepository(manager);
-
     const fixed = this.normalizeSlug(slug ?? '');
-    const product = await repository.findOne({ where: { slug: fixed } });
+    const product = await this.repository.findOne({ where: { slug: fixed } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
   }
 
-  async update(
-    id: string,
-    body: UpdateProductDto,
-    manager?: EntityManager,
-  ): Promise<Product> {
-    const repository = this.getRepository(manager);
-
-    const product = await this.findById(id, manager);
+  async update(id: string, body: UpdateProductDto): Promise<Product> {
+    const product = await this.findById(id);
 
     if (body.name !== undefined) {
       product.name = body.name;
@@ -164,7 +140,7 @@ export class ProductsService {
     }
 
     if (product.slug) {
-      const other = await repository.findOne({
+      const other = await this.repository.findOne({
         where: { slug: product.slug },
       });
       if (other && other.id !== product.id) {
@@ -174,27 +150,19 @@ export class ProductsService {
       }
     }
 
-    return repository.save(product);
+    return this.repository.save(product);
   }
 
-  async setActive(
-    id: string,
-    active: boolean,
-    manager?: EntityManager,
-  ): Promise<Product> {
-    const repository = this.getRepository(manager);
-
-    const product = await this.findById(id, manager);
+  async setActive(id: string, active: boolean): Promise<Product> {
+    const product = await this.findById(id);
     product.active = !!active;
-    return repository.save(product);
+    return this.repository.save(product);
   }
 
   async remove(id: string, manager?: EntityManager): Promise<{ ok: true }> {
-    const repository = this.getRepository(manager);
-
     const product = await this.findById(id, manager);
 
-    await repository.remove(product);
+    await this.repository.remove(product);
     return { ok: true };
   }
 }

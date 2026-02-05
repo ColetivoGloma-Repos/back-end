@@ -35,20 +35,12 @@ export class DistributionPointService {
     private readonly dataSource: DataSource,
 
     @InjectRepository(DistributionPoint)
-    private readonly _repository: Repository<DistributionPoint>,
+    private readonly repository: Repository<DistributionPoint>,
 
     private readonly productsService: ProductsService,
 
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
-
-  private getRepository(
-    manager?: EntityManager,
-  ): Repository<DistributionPoint> {
-    return manager
-      ? manager.getRepository(DistributionPoint)
-      : this._repository;
-  }
 
   private validateSecurity(
     distributionPoint: DistributionPoint,
@@ -76,7 +68,6 @@ export class DistributionPointService {
   async create(
     body: CreateDistributionPointDto,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<DistributionPoint> {
     const { roles, userId } = security || {};
     const isAdmin = roles?.includes(EAuthRoles.ADMIN);
@@ -198,12 +189,10 @@ export class DistributionPointService {
     });
   }
 
-  async list(query: ListDistributionPointsDto, manager?: EntityManager) {
-    const repository = this.getRepository(manager);
-
+  async list(query: ListDistributionPointsDto) {
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
-    const queryBuilder = repository
+    const queryBuilder = this.repository
       .createQueryBuilder('distributionPoint')
       .leftJoinAndSelect('distributionPoint.address', 'address')
       .leftJoin('distributionPoint.requestedProducts', 'requestedProduct')
@@ -257,13 +246,8 @@ export class DistributionPointService {
     };
   }
 
-  async findById(
-    distributionPointId: string,
-    manager?: EntityManager,
-  ): Promise<DistributionPoint> {
-    const repository = this.getRepository(manager);
-
-    const point = await repository.findOne({
+  async findById(distributionPointId: string): Promise<DistributionPoint> {
+    const point = await this.repository.findOne({
       where: { id: distributionPointId },
       relations: {
         address: true,
@@ -284,11 +268,8 @@ export class DistributionPointService {
     distributionPointId: string,
     body: UpdateDistributionPointDto,
     options?: ISecurity,
-    manager?: EntityManager,
   ): Promise<DistributionPoint> {
-    const repository = this.getRepository(manager);
-
-    const distributionPoint = await repository.findOne({
+    const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
       relations: { address: true },
     });
@@ -380,11 +361,8 @@ export class DistributionPointService {
   async remove(
     distributionPointId: string,
     options?: ISecurity,
-    manager?: EntityManager,
   ): Promise<{ ok: true }> {
-    const repository = this.getRepository(manager);
-
-    const distributionPoint = await repository.findOne({
+    const distributionPoint = await this.repository.findOne({
       where: { id: distributionPointId },
     });
     if (!distributionPoint)
@@ -394,7 +372,7 @@ export class DistributionPointService {
 
     this.validateSecurity(distributionPoint, 'delete', options);
 
-    await repository.delete({ id: distributionPointId });
+    await this.repository.delete({ id: distributionPointId });
 
     return { ok: true };
   }

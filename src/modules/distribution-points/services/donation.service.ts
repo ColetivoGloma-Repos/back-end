@@ -33,17 +33,13 @@ export class DonationsService {
     private readonly dataSource: DataSource,
 
     @InjectRepository(Donation)
-    private readonly _repository: Repository<Donation>,
+    private readonly repository: Repository<Donation>,
 
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
 
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
-
-  private getRepository(manager?: EntityManager): Repository<Donation> {
-    return manager ? manager.getRepository(Donation) : this._repository;
-  }
 
   private validatePermission(
     distributionPoint: DistributionPoint,
@@ -80,7 +76,6 @@ export class DonationsService {
   async create(
     body: CreateDonationDto,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<Donation> {
     const quantity = body.quantity;
     if (!Number.isFinite(quantity) || quantity <= 0)
@@ -179,16 +174,10 @@ export class DonationsService {
     });
   }
 
-  async list(
-    query: ListDonationsDto,
-    security?: ISecurity,
-    manager?: EntityManager,
-  ) {
-    const repository = this.getRepository(manager);
-
+  async list(query: ListDonationsDto, security?: ISecurity) {
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
-    const queryBuilder = repository
+    const queryBuilder = this.repository
       .createQueryBuilder('donation')
       .leftJoinAndSelect('donation.user', 'user')
       .leftJoin('donation.requestedProduct', 'requestedProduct')
@@ -309,7 +298,6 @@ export class DonationsService {
   async cancel(
     donationId: string,
     security?: ISecurity,
-    manager?: EntityManager,
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
@@ -389,11 +377,7 @@ export class DonationsService {
     });
   }
 
-  async delivered(
-    donationId: string,
-    security?: ISecurity,
-    manager?: EntityManager,
-  ): Promise<Donation> {
+  async delivered(donationId: string, security?: ISecurity): Promise<Donation> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
       const requestedProductRepository = transactionManager.getRepository(
