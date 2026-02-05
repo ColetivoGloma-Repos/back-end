@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, EntityManager, Repository } from 'typeorm';
 import { Donation } from '../entities/donation.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
@@ -33,13 +33,17 @@ export class DonationsService {
     private readonly dataSource: DataSource,
 
     @InjectRepository(Donation)
-    private readonly repository: Repository<Donation>,
+    private readonly _repository: Repository<Donation>,
 
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
 
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
+
+  private getRepository(manager?: EntityManager): Repository<Donation> {
+    return manager ? manager.getRepository(Donation) : this._repository;
+  }
 
   private validatePermission(
     distributionPoint: DistributionPoint,
@@ -75,7 +79,8 @@ export class DonationsService {
 
   async create(
     body: CreateDonationDto,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
+    manager?: EntityManager,
   ): Promise<Donation> {
     const quantity = body.quantity;
     if (!Number.isFinite(quantity) || quantity <= 0)
@@ -176,11 +181,14 @@ export class DonationsService {
 
   async list(
     query: ListDonationsDto,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
+    manager?: EntityManager,
   ) {
+    const repository = this.getRepository(manager);
+
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
-    const queryBuilder = this.repository
+    const queryBuilder = repository
       .createQueryBuilder('donation')
       .leftJoinAndSelect('donation.user', 'user')
       .leftJoin('donation.requestedProduct', 'requestedProduct')
@@ -300,7 +308,8 @@ export class DonationsService {
 
   async cancel(
     donationId: string,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
+    manager?: EntityManager,
   ): Promise<{ ok: true }> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);
@@ -382,7 +391,8 @@ export class DonationsService {
 
   async delivered(
     donationId: string,
-    security?: { roles?: EAuthRoles[]; userId?: string },
+    security?: ISecurity,
+    manager?: EntityManager,
   ): Promise<Donation> {
     return this.dataSource.transaction(async (transactionManager) => {
       const donationRepository = transactionManager.getRepository(Donation);

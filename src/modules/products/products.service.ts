@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { EntityManager, ILike, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { ListProductsDto, CreateProductDto, UpdateProductDto } from './dto';
 import { ProductMessagesHelper } from './shared';
@@ -13,8 +13,12 @@ import { ProductMessagesHelper } from './shared';
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private readonly repository: Repository<Product>,
+    private readonly _repository: Repository<Product>,
   ) {}
+
+  private getRepository(manager?: EntityManager): Repository<Product> {
+    return manager ? manager.getRepository(Product) : this._repository;
+  }
 
   normalizeSlug(value: string): string {
     return value
@@ -26,35 +30,43 @@ export class ProductsService {
       .replace(/(^-+)|(-+$)/g, '');
   }
 
-  async create(body: CreateProductDto): Promise<Product> {
+  async create(
+    body: CreateProductDto,
+    manager?: EntityManager,
+  ): Promise<Product> {
+    const repository = this.getRepository(manager);
+
     const slug = this.normalizeSlug(body.slug || body.name);
 
-    const existing = await this.repository.findOne({ where: { slug } });
+    const existing = await repository.findOne({ where: { slug } });
     if (existing)
       throw new ConflictException(
         ProductMessagesHelper.PRODUCT_SLUG_ALREADY_EXISTS,
       );
 
-    const entity = this.repository.create({
+    const entity = repository.create({
       slug,
       name: body.name,
       unit: body.unit ?? null,
       active: body.active ?? true,
     });
 
-    return this.repository.save(entity);
+    return repository.save(entity);
   }
 
   async getOrCreateByName(
     name: string,
     unit?: string | null,
+    manager?: EntityManager,
   ): Promise<Product> {
+    const repository = this.getRepository(manager);
+
     const slug = this.normalizeSlug(name);
 
-    const existing = await this.repository.findOne({ where: { slug } });
+    const existing = await repository.findOne({ where: { slug } });
     if (existing) return existing;
 
-    const entity = this.repository.create({
+    const entity = repository.create({
       slug,
       name: name,
       unit: unit ?? null,
@@ -62,15 +74,17 @@ export class ProductsService {
     });
 
     try {
-      return await this.repository.save(entity);
+      return await repository.save(entity);
     } catch {
-      const retry = await this.repository.findOne({ where: { slug } });
+      const retry = await repository.findOne({ where: { slug } });
       if (retry) return retry;
       throw new ConflictException(ProductMessagesHelper.FAIL_TO_CREATE_PRODUCT);
     }
   }
 
-  async list(query: ListProductsDto) {
+  async list(query: ListProductsDto, manager?: EntityManager) {
+    const repository = this.getRepository(manager);
+
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 10)));
     const offset = Math.max(0, Number(query.offset ?? 0));
     const skip = offset;
@@ -86,7 +100,7 @@ export class ProductsService {
       where.name = ILike(`%${search}%`);
     }
 
-    const [items, total] = await this.repository.findAndCount({
+    const [items, total] = await repository.findAndCount({
       where,
       order: { name: 'ASC' },
       take: limit,
@@ -102,23 +116,33 @@ export class ProductsService {
     };
   }
 
-  async findById(id: string): Promise<Product> {
-    const product = await this.repository.findOne({ where: { id } });
+  async findById(id: string, manager?: EntityManager): Promise<Product> {
+    const repository = this.getRepository(manager);
+
+    const product = await repository.findOne({ where: { id } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
   }
 
-  async findBySlug(slug: string): Promise<Product> {
+  async findBySlug(slug: string, manager?: EntityManager): Promise<Product> {
+    const repository = this.getRepository(manager);
+
     const fixed = this.normalizeSlug(slug ?? '');
-    const product = await this.repository.findOne({ where: { slug: fixed } });
+    const product = await repository.findOne({ where: { slug: fixed } });
     if (!product)
       throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
     return product;
   }
 
-  async update(id: string, body: UpdateProductDto): Promise<Product> {
-    const product = await this.findById(id);
+  async update(
+    id: string,
+    body: UpdateProductDto,
+    manager?: EntityManager,
+  ): Promise<Product> {
+    const repository = this.getRepository(manager);
+
+    const product = await this.findById(id, manager);
 
     if (body.name !== undefined) {
       product.name = body.name;
@@ -140,7 +164,7 @@ export class ProductsService {
     }
 
     if (product.slug) {
-      const other = await this.repository.findOne({
+      const other = await repository.findOne({
         where: { slug: product.slug },
       });
       if (other && other.id !== product.id) {
@@ -150,18 +174,27 @@ export class ProductsService {
       }
     }
 
-    return this.repository.save(product);
+    return repository.save(product);
   }
 
-  async setActive(id: string, active: boolean): Promise<Product> {
-    const product = await this.findById(id);
+  async setActive(
+    id: string,
+    active: boolean,
+    manager?: EntityManager,
+  ): Promise<Product> {
+    const repository = this.getRepository(manager);
+
+    const product = await this.findById(id, manager);
     product.active = !!active;
-    return this.repository.save(product);
+    return repository.save(product);
   }
 
-  async remove(id: string): Promise<{ ok: true }> {
-    const product = await this.findById(id);
-    await this.repository.remove(product);
+  async remove(id: string, manager?: EntityManager): Promise<{ ok: true }> {
+    const repository = this.getRepository(manager);
+
+    const product = await this.findById(id, manager);
+
+    await repository.remove(product);
     return { ok: true };
   }
 }

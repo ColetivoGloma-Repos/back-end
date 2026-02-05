@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -35,12 +35,20 @@ export class DistributionPointService {
     private readonly dataSource: DataSource,
 
     @InjectRepository(DistributionPoint)
-    private readonly repository: Repository<DistributionPoint>,
+    private readonly _repository: Repository<DistributionPoint>,
 
     private readonly productsService: ProductsService,
 
     private readonly requestedProductService: PointRequestedProductsService,
   ) {}
+
+  private getRepository(
+    manager?: EntityManager,
+  ): Repository<DistributionPoint> {
+    return manager
+      ? manager.getRepository(DistributionPoint)
+      : this._repository;
+  }
 
   private validateSecurity(
     distributionPoint: DistributionPoint,
@@ -68,6 +76,7 @@ export class DistributionPointService {
   async create(
     body: CreateDistributionPointDto,
     security?: ISecurity,
+    manager?: EntityManager,
   ): Promise<DistributionPoint> {
     const { roles, userId } = security || {};
     const isAdmin = roles?.includes(EAuthRoles.ADMIN);
@@ -189,10 +198,12 @@ export class DistributionPointService {
     });
   }
 
-  async list(query: ListDistributionPointsDto) {
+  async list(query: ListDistributionPointsDto, manager?: EntityManager) {
+    const repository = this.getRepository(manager);
+
     const pagination = buildPagination(query, { createdAt: 'DESC' });
 
-    const queryBuilder = this.repository
+    const queryBuilder = repository
       .createQueryBuilder('distributionPoint')
       .leftJoinAndSelect('distributionPoint.address', 'address')
       .leftJoin('distributionPoint.requestedProducts', 'requestedProduct')
@@ -246,8 +257,13 @@ export class DistributionPointService {
     };
   }
 
-  async findById(distributionPointId: string): Promise<DistributionPoint> {
-    const point = await this.repository.findOne({
+  async findById(
+    distributionPointId: string,
+    manager?: EntityManager,
+  ): Promise<DistributionPoint> {
+    const repository = this.getRepository(manager);
+
+    const point = await repository.findOne({
       where: { id: distributionPointId },
       relations: {
         address: true,
@@ -267,9 +283,12 @@ export class DistributionPointService {
   async update(
     distributionPointId: string,
     body: UpdateDistributionPointDto,
-    options?: { roles?: EAuthRoles[]; userId?: string },
+    options?: ISecurity,
+    manager?: EntityManager,
   ): Promise<DistributionPoint> {
-    const distributionPoint = await this.repository.findOne({
+    const repository = this.getRepository(manager);
+
+    const distributionPoint = await repository.findOne({
       where: { id: distributionPointId },
       relations: { address: true },
     });
@@ -361,8 +380,11 @@ export class DistributionPointService {
   async remove(
     distributionPointId: string,
     options?: ISecurity,
+    manager?: EntityManager,
   ): Promise<{ ok: true }> {
-    const distributionPoint = await this.repository.findOne({
+    const repository = this.getRepository(manager);
+
+    const distributionPoint = await repository.findOne({
       where: { id: distributionPointId },
     });
     if (!distributionPoint)
@@ -372,7 +394,7 @@ export class DistributionPointService {
 
     this.validateSecurity(distributionPoint, 'delete', options);
 
-    await this.repository.delete({ id: distributionPointId });
+    await repository.delete({ id: distributionPointId });
 
     return { ok: true };
   }
