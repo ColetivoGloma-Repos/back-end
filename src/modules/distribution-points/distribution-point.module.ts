@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { DistributionPoint, PointRequestedProduct, Donation } from './entities';
 import {
@@ -13,6 +12,7 @@ import {
   PointRequestedProductsService,
   DonationsService,
 } from './services';
+import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
   imports: [
@@ -21,7 +21,7 @@ import {
       PointRequestedProduct,
       Donation,
     ]),
-    forwardRef(() => AuthModule),
+    NotificationModule,
     ProductsModule,
   ],
   providers: [

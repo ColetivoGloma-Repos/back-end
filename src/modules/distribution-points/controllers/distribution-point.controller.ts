@@ -51,7 +51,10 @@ export class DistributionPointController {
   async findById(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<DistributionPoint> {
-    return this.service.findById(id);
+    return this.service.findById(id, {
+      address: true,
+      files: true,
+    });
   }
 
   @Patch(':id([0-9a-fA-F-]{36})')

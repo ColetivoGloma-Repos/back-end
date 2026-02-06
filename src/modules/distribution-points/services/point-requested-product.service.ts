@@ -2,11 +2,20 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, In, Repository } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  FindOneOptions,
+  In,
+  Repository,
+} from 'typeorm';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -16,7 +25,6 @@ import {
   ListPointRequestedProductsDto,
   UpdatePointRequestedProductDto,
 } from '../dto/point-requested-product';
-import { ProductMessagesHelper } from 'src/modules/products/shared';
 import {
   DistributionPointsMessagesHelper,
   PointRequestedProductsMessagesHelper,
@@ -25,6 +33,10 @@ import { ProductsService } from 'src/modules/products/products.service';
 import { Donation } from '../entities';
 import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
+import { NotificationService } from 'src/modules/notifications/notification.service';
+import { NotificationType } from 'src/modules/notifications/enums/notification-type.enum';
+import { NotificationSeverity } from 'src/modules/notifications/enums/notification-severity.enum';
+import { DistributionPointService } from './distribution-point.service';
 
 type SecurityAction = 'create' | 'update' | 'delete' | 'delivery';
 interface ISecurity {
@@ -40,10 +52,12 @@ export class PointRequestedProductsService {
     @InjectRepository(PointRequestedProduct)
     private readonly repository: Repository<PointRequestedProduct>,
 
-    @InjectRepository(DistributionPoint)
-    private readonly distributionPointRepository: Repository<DistributionPoint>,
-
     private readonly productsService: ProductsService,
+
+    private readonly notificationService: NotificationService,
+
+    @Inject(forwardRef(() => DistributionPointService))
+    private readonly distributionPointService: DistributionPointService,
   ) {}
 
   private validateSecurity(
@@ -89,15 +103,9 @@ export class PointRequestedProductsService {
     body: CreatePointRequestedProductDto,
     security?: ISecurity,
   ): Promise<PointRequestedProduct[]> {
-    const distributionPoint = await this.distributionPointRepository.findOne({
-      where: { id: body.distributionPointId },
-    });
-
-    if (!distributionPoint) {
-      throw new NotFoundException(
-        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-      );
-    }
+    const distributionPoint = await this.distributionPointService.findById(
+      body.distributionPointId,
+    );
 
     this.validateSecurity(distributionPoint, 'create', security);
 
@@ -111,147 +119,190 @@ export class PointRequestedProductsService {
       );
     }
 
-    return this.dataSource.transaction(async (transactionManager) => {
-      const requestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-      const productsRepository = transactionManager.getRepository(Product);
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const requestedProductRepository = transactionManager.getRepository(
+          PointRequestedProduct,
+        );
+        const productsRepository = transactionManager.getRepository(Product);
 
-      const normalized = requestedProducts.map((item) => {
-        const slug = this.productsService.normalizeSlug(item.slug || item.name);
-
-        return {
-          slug,
-          name: item.name,
-          unit: item.unit,
-          requestedQuantity: Number(item.requestedQuantity ?? 0),
-        };
-      });
-
-      const slugs = Array.from(new Set(normalized.map((x) => x.slug)));
-
-      const existingProducts = await productsRepository.find({
-        where: { slug: In(slugs) },
-      });
-
-      const productBySlug = new Map<string, Product>();
-      for (const product of existingProducts) {
-        productBySlug.set(product.slug, product);
-      }
-
-      const productsToCreate: Product[] = [];
-      for (const product of normalized) {
-        if (!productBySlug.has(product.slug)) {
-          productsToCreate.push(
-            productsRepository.create({
-              slug: product.slug,
-              name: product.name,
-              unit: product.unit,
-              active: true,
-            }),
+        const normalizedProducts = requestedProducts.map((item) => {
+          const slug = this.productsService.normalizeSlug(
+            item.slug || item.name,
           );
+
+          return {
+            slug,
+            name: item.name,
+            unit: item.unit,
+            requestedQuantity: Number(item.requestedQuantity ?? 0),
+          };
+        });
+
+        const slugs = Array.from(
+          new Set(normalizedProducts.map((x) => x.slug)),
+        );
+
+        const existingProducts = await productsRepository.find({
+          where: { slug: In(slugs) },
+        });
+
+        const productMap = new Map<string, Product>();
+        existingProducts.forEach((p) => productMap.set(p.slug, p));
+
+        const productsToCreate: Product[] = [];
+
+        for (const product of normalizedProducts) {
+          if (!productMap.has(product.slug)) {
+            productsToCreate.push(
+              productsRepository.create({
+                slug: product.slug,
+                name: product.name,
+                unit: product.unit,
+                active: true,
+              }),
+            );
+          }
         }
-      }
 
-      if (productsToCreate.length) {
-        const created = await productsRepository.save(productsToCreate);
-        for (const product of created) {
-          productBySlug.set(product.slug, product);
+        if (productsToCreate.length) {
+          const created = await productsRepository.save(productsToCreate);
+          for (const product of created) {
+            productMap.set(product.slug, product);
+          }
         }
-      }
 
-      const payloadByProductId = new Map<string, number>();
+        const payloadByProductId = new Map<string, number>();
 
-      for (const item of normalized) {
-        const product = productBySlug.get(item.slug);
-        if (!product) continue;
+        for (const item of normalizedProducts) {
+          const product = productMap.get(item.slug);
+          if (!product) continue;
 
-        const productId = product.id;
-
-        const current = payloadByProductId.get(productId);
-        if (current !== undefined) {
-          payloadByProductId.set(productId, current + item.requestedQuantity);
-        } else {
-          payloadByProductId.set(productId, item.requestedQuantity);
+          const current = payloadByProductId.get(product.id) || 0;
+          payloadByProductId.set(product.id, current + item.requestedQuantity);
         }
-      }
 
-      const productIds = Array.from(payloadByProductId.keys());
+        const productIds = Array.from(payloadByProductId.keys());
 
-      const existingRequested = productIds.length
-        ? await requestedProductRepository.find({
-            where: {
-              distributionPointId: body.distributionPointId,
-              productId: In(productIds),
-            },
-            relations: { product: true },
-          })
-        : [];
+        const existingRequested = productIds.length
+          ? await requestedProductRepository.find({
+              where: {
+                distributionPointId: body.distributionPointId,
+                productId: In(productIds),
+              },
+              relations: { product: true },
+            })
+          : [];
 
-      const existingByProductId = new Map<string, PointRequestedProduct>();
-      for (const requestedProduct of existingRequested) {
-        existingByProductId.set(requestedProduct.productId, requestedProduct);
-      }
+        const existingByProductId = new Map<string, PointRequestedProduct>();
+        existingRequested.forEach((r) =>
+          existingByProductId.set(r.productId, r),
+        );
 
-      const toSave: PointRequestedProduct[] = [];
-      const alreadyRequestedNames: string[] = [];
+        const toSave: PointRequestedProduct[] = [];
+        const alreadyRequestedNames: string[] = [];
 
-      for (const [
-        productId,
-        requestedQuantity,
-      ] of payloadByProductId.entries()) {
-        const existing = existingByProductId.get(productId);
+        for (const [
+          productId,
+          requestedQuantity,
+        ] of payloadByProductId.entries()) {
+          const existing = existingByProductId.get(productId);
 
-        if (existing) {
-          if (existing.status !== RequestedProductStatus.REMOVED) {
-            alreadyRequestedNames.push(existing.product?.name ?? 'Produto');
+          if (existing) {
+            if (existing.status !== RequestedProductStatus.REMOVED) {
+              alreadyRequestedNames.push(existing.product?.name ?? 'Produto');
+              continue;
+            }
+
+            const nextRequested = requestedQuantity;
+            const nextDonated = Math.max(
+              0,
+              Number(existing.donatedQuantity ?? 0),
+            );
+
+            const computedStatus = this.computeStatus(
+              nextRequested,
+              nextDonated,
+            );
+
+            existing.requestedQuantity = nextRequested;
+            existing.donatedQuantity = nextDonated;
+            existing.status = computedStatus;
+            existing.closesAt =
+              computedStatus === RequestedProductStatus.FULL
+                ? new Date()
+                : null;
+
+            toSave.push(existing);
             continue;
           }
 
-          const nextRequested = requestedQuantity;
-          const nextDonated = Math.max(
-            0,
-            Number(existing.donatedQuantity ?? 0),
-          );
+          const computedStatus = this.computeStatus(requestedQuantity, 0);
 
-          const computedStatus = this.computeStatus(nextRequested, nextDonated);
+          const entity = requestedProductRepository.create({
+            distributionPointId: distributionPoint.id,
+            productId,
+            requestedQuantity,
+            donatedQuantity: 0,
+            status: computedStatus,
+            closesAt:
+              computedStatus === RequestedProductStatus.FULL
+                ? new Date()
+                : null,
+          });
 
-          existing.requestedQuantity = nextRequested;
-          existing.donatedQuantity = nextDonated;
-          existing.status = computedStatus;
-          existing.closesAt =
-            computedStatus === RequestedProductStatus.FULL ? new Date() : null;
-
-          toSave.push(existing);
-          continue;
+          toSave.push(entity);
         }
 
-        const computedStatus = this.computeStatus(requestedQuantity, 0);
+        if (alreadyRequestedNames.length) {
+          const uniqueNames = Array.from(new Set(alreadyRequestedNames));
+          throw new ConflictException(
+            DistributionPointsMessagesHelper.PRODUCTS_ALREADY_REQUESTED(
+              uniqueNames,
+            ),
+          );
+        }
 
-        const entity = requestedProductRepository.create({
-          distributionPointId: distributionPoint.id,
-          productId,
-          requestedQuantity,
-          donatedQuantity: 0,
-          status: computedStatus,
-          closesAt:
-            computedStatus === RequestedProductStatus.FULL ? new Date() : null,
-        });
+        const savedRequests = await requestedProductRepository.save(toSave);
 
-        toSave.push(entity);
+        return {
+          savedRequests,
+          pointTitle: distributionPoint.title,
+          productNames: savedRequests
+            .map(
+              (r) =>
+                productMap.get(
+                  Array.from(productMap.values()).find(
+                    (p) => p.id === r.productId,
+                  )?.slug || '',
+                )?.name,
+            )
+            .filter(Boolean) as string[],
+        };
+      },
+    );
+
+    const { savedRequests, pointTitle, productNames } = transactionResult;
+
+    if (savedRequests.length > 0) {
+      const maxItemsToShow = 2;
+      let itemsText = productNames.slice(0, maxItemsToShow).join(', ');
+
+      if (productNames.length > maxItemsToShow) {
+        itemsText += ` e mais ${productNames.length - maxItemsToShow} itens`;
       }
 
-      if (alreadyRequestedNames.length) {
-        const uniqueNames = Array.from(new Set(alreadyRequestedNames));
-        throw new ConflictException(
-          DistributionPointsMessagesHelper.PRODUCTS_ALREADY_REQUESTED(
-            uniqueNames,
-          ),
-        );
-      }
+      await this.notificationService
+        .notifyAllUsers({
+          type: NotificationType.REQUESTED_PRODUCT,
+          title: 'Precisamos da sua ajuda!',
+          message: `O ponto "${pointTitle}" está precisando de: ${itemsText}.`,
+          severity: NotificationSeverity.INFO,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
 
-      return requestedProductRepository.save(toSave);
-    });
+    return savedRequests;
   }
 
   async list(query: ListPointRequestedProductsDto, manager?: EntityManager) {
@@ -259,7 +310,7 @@ export class PointRequestedProductsService {
 
     const queryBuilder = this.repository
       .createQueryBuilder('requestedProduct')
-      .leftJoinAndSelect('requestedProduct.product', 'product')
+      .innerJoinAndSelect('requestedProduct.product', 'product')
       .leftJoin('requestedProduct.point', 'point')
       .take(pagination.take)
       .skip(pagination.skip);
@@ -338,10 +389,13 @@ export class PointRequestedProductsService {
     };
   }
 
-  async findById(requestedProductId: string): Promise<PointRequestedProduct> {
+  async findById(
+    requestedProductId: string,
+    relations?: FindOneOptions<PointRequestedProduct>['relations'],
+  ): Promise<PointRequestedProduct> {
     const requestedPoint = await this.repository.findOne({
       where: { id: requestedProductId },
-      relations: { product: true },
+      relations,
     });
 
     if (!requestedPoint) {
@@ -358,125 +412,172 @@ export class PointRequestedProductsService {
     body: UpdatePointRequestedProductDto,
     security?: ISecurity,
   ): Promise<PointRequestedProduct> {
-    return this.dataSource.transaction(async (transactionManager) => {
-      const requestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-      const productRepository = transactionManager.getRepository(Product);
-      const distributionPointRepository =
-        transactionManager.getRepository(DistributionPoint);
-
-      const requestedPoint = await requestedProductRepository
-        .createQueryBuilder('requestedProduct')
-        .setLock('pessimistic_write')
-        .where('requestedProduct.id = :id', { id: requestedProductId })
-        .getOne();
-
-      if (!requestedPoint) {
-        throw new NotFoundException(
-          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const requestedProductRepository = transactionManager.getRepository(
+          PointRequestedProduct,
         );
-      }
+        const productRepository = transactionManager.getRepository(Product);
 
-      const distributionPoint = await distributionPointRepository.findOne({
-        where: { id: requestedPoint.distributionPointId },
-      });
+        const requestedProduct = await requestedProductRepository
+          .createQueryBuilder('requestedProduct')
+          .setLock('pessimistic_write')
+          .innerJoinAndSelect('requestedProduct.point', 'point')
+          .innerJoinAndSelect('requestedProduct.product', 'product')
+          .where('requestedProduct.id = :id', { id: requestedProductId })
+          .getOne();
 
-      if (!distributionPoint) {
-        throw new NotFoundException(
-          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-        );
-      }
-
-      this.validateSecurity(distributionPoint, 'update', security);
-
-      if (body.requestedQuantity !== undefined) {
-        const donated = requestedPoint.donatedQuantity;
-        const nextRequested = body.requestedQuantity;
-
-        if (nextRequested < donated) {
-          throw new BadRequestException(
-            PointRequestedProductsMessagesHelper.REQUESTED_QUANTITY_LESS_THAN_DONATED,
+        if (!requestedProduct) {
+          throw new NotFoundException(
+            PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
           );
         }
 
-        requestedPoint.requestedQuantity = body.requestedQuantity;
-      }
-
-      if (body.productName !== undefined) {
-        if (!requestedPoint.productId) {
-          throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
+        if (!requestedProduct.point) {
+          throw new NotFoundException(
+            DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+          );
         }
 
-        const product = await productRepository
-          .createQueryBuilder('product')
-          .setLock('pessimistic_write')
-          .where('product.id = :id', { id: requestedPoint.productId })
-          .getOne();
+        this.validateSecurity(requestedProduct.point, 'update', security);
 
-        if (!product) {
-          throw new NotFoundException(ProductMessagesHelper.PRODUCT_NOT_FOUND);
-        }
+        const oldRequestedQuantity = requestedProduct.requestedQuantity;
+        let productNameChanged = false;
 
-        product.name = body.productName;
-        await productRepository.save(product);
-      }
+        if (body.requestedQuantity !== undefined) {
+          const donated = requestedProduct.donatedQuantity || 0;
+          const nextRequested = body.requestedQuantity;
 
-      if (body.status) {
-        requestedPoint.status = body.status;
-      }
-
-      if (body.closesAt !== undefined) {
-        requestedPoint.closesAt = body.closesAt
-          ? new Date(body.closesAt)
-          : null;
-      }
-
-      const nextStatus =
-        requestedPoint.status === RequestedProductStatus.REMOVED
-          ? RequestedProductStatus.REMOVED
-          : this.computeStatus(
-              Number(requestedPoint.requestedQuantity ?? 0),
-              Number(requestedPoint.donatedQuantity ?? 0),
+          if (nextRequested < donated) {
+            throw new BadRequestException(
+              PointRequestedProductsMessagesHelper.REQUESTED_QUANTITY_LESS_THAN_DONATED,
             );
+          }
 
-      requestedPoint.status = nextStatus;
-      requestedPoint.closesAt =
-        nextStatus === RequestedProductStatus.FULL
-          ? (requestedPoint.closesAt ?? new Date())
-          : null;
+          requestedProduct.requestedQuantity = body.requestedQuantity;
+        }
 
-      return requestedProductRepository.save(requestedPoint);
-    });
+        if (body.productName !== undefined && requestedProduct.product) {
+          const product = await productRepository
+            .createQueryBuilder('product')
+            .setLock('pessimistic_write')
+            .where('product.id = :id', { id: requestedProduct.productId })
+            .getOne();
+
+          if (product) {
+            product.name = body.productName;
+            await productRepository.save(product);
+
+            requestedProduct.product.name = body.productName;
+            productNameChanged = true;
+          }
+        }
+
+        if (body.status) {
+          requestedProduct.status = body.status;
+        }
+
+        if (body.closesAt !== undefined) {
+          requestedProduct.closesAt = body.closesAt
+            ? new Date(body.closesAt)
+            : null;
+        }
+
+        const nextStatus =
+          requestedProduct.status === RequestedProductStatus.REMOVED
+            ? RequestedProductStatus.REMOVED
+            : this.computeStatus(
+                Number(requestedProduct.requestedQuantity ?? 0),
+                Number(requestedProduct.donatedQuantity ?? 0),
+              );
+
+        requestedProduct.status = nextStatus;
+        requestedProduct.closesAt =
+          nextStatus === RequestedProductStatus.FULL
+            ? (requestedProduct.closesAt ?? new Date())
+            : null;
+
+        const savedRequestedProduct =
+          await requestedProductRepository.save(requestedProduct);
+
+        return {
+          savedRequestedProduct,
+          oldRequestedQuantity,
+          productNameChanged,
+          pointTitle: requestedProduct.point.title,
+        };
+      },
+    );
+
+    const {
+      savedRequestedProduct,
+      oldRequestedQuantity,
+      pointTitle,
+      productNameChanged,
+    } = transactionResult;
+    const currentQuantity = Number(
+      savedRequestedProduct.requestedQuantity ?? 0,
+    );
+    const productName = savedRequestedProduct.product?.name || 'Produto';
+
+    let shouldNotify = false;
+    let notificationTitle = 'Meta atualizada';
+    let notificationMessage = `As necessidades do ponto ${pointTitle} foram atualizadas.`;
+
+    if (currentQuantity > oldRequestedQuantity) {
+      shouldNotify = true;
+      notificationTitle = 'Precisamos de mais ajuda!';
+      notificationMessage = `O ponto ${pointTitle} aumentou a meta de ${productName}. Ainda precisamos de doações!`;
+    } else if (productNameChanged) {
+      shouldNotify = true;
+      notificationTitle = 'Correção de item';
+      notificationMessage = `Houve uma correção na descrição do item ${productName} no ponto ${pointTitle}.`;
+    }
+
+    if (shouldNotify) {
+      await this.notificationService
+        .notifyAllUsers({
+          type: NotificationType.REQUESTED_PRODUCT,
+          title: notificationTitle,
+          message: notificationMessage,
+          severity: NotificationSeverity.INFO,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
+
+    return savedRequestedProduct;
   }
 
   async remove(
     requestedProductId: string,
     security?: ISecurity,
   ): Promise<{ ok: true }> {
-    const requestedPoint = await this.repository.findOne({
-      where: { id: requestedProductId },
+    const requestedProduct = await this.findById(requestedProductId, {
+      product: true,
     });
-    if (!requestedPoint)
-      throw new NotFoundException(
-        PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
-      );
 
-    const distributionPoint = await this.distributionPointRepository.findOne({
-      where: { id: requestedPoint.distributionPointId },
-    });
-    if (!distributionPoint) {
-      throw new NotFoundException(
-        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-      );
-    }
+    const distributionPoint = await this.distributionPointService.findById(
+      requestedProduct.distributionPointId,
+    );
 
     this.validateSecurity(distributionPoint, 'delete', security);
 
-    requestedPoint.status = RequestedProductStatus.REMOVED;
-    requestedPoint.closesAt = new Date();
+    requestedProduct.status = RequestedProductStatus.REMOVED;
+    requestedProduct.closesAt = new Date();
 
-    await this.repository.save(requestedPoint);
+    await this.repository.save(requestedProduct);
+
+    const productName = requestedProduct.product.name;
+    const pointTitle = distributionPoint.title;
+
+    await this.notificationService
+      .notifyAllUsers({
+        type: NotificationType.REQUESTED_PRODUCT,
+        title: 'Meta Atualizada',
+        message: `O ponto "${pointTitle}" não precisa mais de doações de ${productName} no momento.`,
+        severity: NotificationSeverity.WARNING,
+      })
+      .catch((err) => console.error('Erro ao notificar em background', err));
 
     return { ok: true };
   }
@@ -485,138 +586,189 @@ export class PointRequestedProductsService {
     userId: string,
     requestedProductId: string,
   ): Promise<{ ok: true }> {
-    return this.dataSource.transaction(async (transactionManager) => {
-      const donationRepository = transactionManager.getRepository(Donation);
-      const requestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-
-      const request = await requestedProductRepository
-        .createQueryBuilder('requestedProduct')
-        .setLock('pessimistic_write')
-        .where('requestedProduct.id = :id', { id: requestedProductId })
-        .getOne();
-
-      if (!request) {
-        throw new NotFoundException(
-          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const donationRepository = transactionManager.getRepository(Donation);
+        const requestedProductRepository = transactionManager.getRepository(
+          PointRequestedProduct,
         );
-      }
 
-      const donations = await donationRepository.find({
-        where: {
-          userId,
-          requestedProductId,
-          status: DonationStatus.ACTIVE,
-        },
-      });
+        const requestedProduct = await requestedProductRepository
+          .createQueryBuilder('requestedProduct')
+          .setLock('pessimistic_write')
+          .innerJoinAndSelect('requestedProduct.point', 'point')
+          .innerJoinAndSelect('requestedProduct.product', 'product')
+          .where('requestedProduct.id = :id', { id: requestedProductId })
+          .getOne();
 
-      if (!donations.length) {
-        return { ok: true };
-      }
+        if (!requestedProduct) {
+          throw new NotFoundException(
+            PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+          );
+        }
 
-      const totalCancelQuantity = donations.reduce(
-        (sum, d) => sum + Number(d.quantity ?? 0),
-        0,
-      );
+        const donations = await donationRepository.find({
+          where: {
+            userId,
+            requestedProductId,
+            status: DonationStatus.ACTIVE,
+          },
+        });
 
-      for (const donation of donations) {
-        donation.status = DonationStatus.CANCELED;
-      }
-      await donationRepository.save(donations);
+        if (!donations.length) {
+          return null;
+        }
 
-      const requestedQuantity = Number(request.requestedQuantity ?? 0);
-      const donatedQuantity = Number(request.donatedQuantity ?? 0);
+        const totalCancelQuantity = donations.reduce(
+          (sum, d) => sum + Number(d.quantity ?? 0),
+          0,
+        );
 
-      const nextDonated = Math.max(0, donatedQuantity - totalCancelQuantity);
+        for (const donation of donations) {
+          donation.status = DonationStatus.CANCELED;
+        }
+        await donationRepository.save(donations);
 
-      const nextStatus =
-        request.status === RequestedProductStatus.REMOVED
-          ? RequestedProductStatus.REMOVED
-          : this.computeStatus(requestedQuantity, nextDonated);
+        const requestedQuantity = Number(
+          requestedProduct.requestedQuantity ?? 0,
+        );
+        const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
 
-      request.donatedQuantity = nextDonated;
-      request.status = nextStatus;
-      request.closesAt =
-        nextStatus === RequestedProductStatus.FULL
-          ? (request.closesAt ?? new Date())
-          : null;
+        const nextDonated = Math.max(0, donatedQuantity - totalCancelQuantity);
 
-      await requestedProductRepository.save(request);
+        const nextStatus =
+          requestedProduct.status === RequestedProductStatus.REMOVED
+            ? RequestedProductStatus.REMOVED
+            : this.computeStatus(requestedQuantity, nextDonated);
 
-      return { ok: true };
-    });
+        requestedProduct.donatedQuantity = nextDonated;
+        requestedProduct.status = nextStatus;
+        requestedProduct.closesAt =
+          nextStatus === RequestedProductStatus.FULL
+            ? (requestedProduct.closesAt ?? new Date())
+            : null;
+
+        await requestedProductRepository.save(requestedProduct);
+
+        return {
+          pointOwnerId: requestedProduct.point.ownerId,
+          productName: requestedProduct.product?.name || 'Item',
+          donorName: donations[0].user?.name || 'Um usuário',
+          totalCanceled: totalCancelQuantity,
+        };
+      },
+    );
+
+    if (transactionResult) {
+      const { pointOwnerId, productName, donorName, totalCanceled } =
+        transactionResult;
+
+      await this.notificationService
+        .create({
+          userId: pointOwnerId,
+          type: NotificationType.REQUESTED_PRODUCT,
+          title: 'Doação Cancelada',
+          message: `${donorName} cancelou a doação de ${totalCanceled}x ${productName}.`,
+          severity: NotificationSeverity.WARNING,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
+
+    return { ok: true };
   }
 
   async delivered(
     requestedProductId: string,
     security?: ISecurity,
   ): Promise<{ ok: true }> {
-    return this.dataSource.transaction(async (transactionManager) => {
-      const requestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-      const donationRepository = transactionManager.getRepository(Donation);
-      const distributionPointRepository =
-        transactionManager.getRepository(DistributionPoint);
-
-      const requestedProduct = await requestedProductRepository
-        .createQueryBuilder('requestedProduct')
-        .setLock('pessimistic_write')
-        .where('requestedProduct.id = :id', { id: requestedProductId })
-        .getOne();
-
-      if (!requestedProduct) {
-        throw new NotFoundException(
-          PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const requestedProductRepository = transactionManager.getRepository(
+          PointRequestedProduct,
         );
-      }
+        const donationRepository = transactionManager.getRepository(Donation);
 
-      const distributionPoint = await distributionPointRepository.findOne({
-        where: { id: requestedProduct.distributionPointId },
-      });
+        const requestedProduct = await requestedProductRepository
+          .createQueryBuilder('requestedProduct')
+          .setLock('pessimistic_write')
+          .innerJoinAndSelect('requestedProduct.point', 'point')
+          .innerJoinAndSelect('requestedProduct.product', 'product')
+          .where('requestedProduct.id = :id', { id: requestedProductId })
+          .getOne();
 
-      if (!distributionPoint) {
-        throw new NotFoundException(
-          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        if (!requestedProduct) {
+          throw new NotFoundException(
+            PointRequestedProductsMessagesHelper.SOLICITATION_NOT_FOUND,
+          );
+        }
+
+        if (!requestedProduct.point) {
+          throw new NotFoundException(
+            DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+          );
+        }
+
+        this.validateSecurity(requestedProduct.point, 'delivery', security);
+
+        const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
+        const deliveredQuantity = Number(
+          requestedProduct.deliveredQuantity ?? 0,
         );
-      }
 
-      this.validateSecurity(distributionPoint, 'delivery', security);
+        if (donatedQuantity <= 0) {
+          throw new ConflictException(
+            PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
+          );
+        }
 
-      const donatedQuantity = Number(requestedProduct.donatedQuantity ?? 0);
-      const deliveredQuantity = Number(requestedProduct.deliveredQuantity ?? 0);
+        if (deliveredQuantity > donatedQuantity) {
+          requestedProduct.deliveredQuantity = donatedQuantity;
+        }
 
-      if (donatedQuantity <= 0) {
-        throw new ConflictException(
-          PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
-        );
-      }
+        const donations = await donationRepository.find({
+          where: {
+            requestedProductId,
+            status: DonationStatus.ACTIVE,
+          },
+          select: ['id', 'userId'],
+        });
 
-      if (deliveredQuantity > donatedQuantity) {
-        requestedProduct.deliveredQuantity = donatedQuantity;
-      }
-
-      const donations = await donationRepository.find({
-        where: { requestedProductId },
-      });
-
-      if (donations.length) {
-        for (const donation of donations) {
-          if (donation.status !== DonationStatus.CANCELED) {
+        if (donations.length) {
+          for (const donation of donations) {
             donation.status = DonationStatus.DELIVERED;
           }
+          await donationRepository.save(donations);
         }
-        await donationRepository.save(donations);
-      }
 
-      requestedProduct.deliveredQuantity = donatedQuantity;
-      requestedProduct.status = RequestedProductStatus.DELIVERED;
-      requestedProduct.closesAt = requestedProduct.closesAt ?? new Date();
+        requestedProduct.deliveredQuantity = donatedQuantity;
+        requestedProduct.status = RequestedProductStatus.DELIVERED;
+        requestedProduct.closesAt = requestedProduct.closesAt ?? new Date();
 
-      await requestedProductRepository.save(requestedProduct);
+        await requestedProductRepository.save(requestedProduct);
 
-      return { ok: true };
-    });
+        const uniqueUserIds = [...new Set(donations.map((d) => d.userId))];
+
+        return {
+          userIds: uniqueUserIds,
+          pointTitle: requestedProduct.point.title,
+          productName: requestedProduct.product?.name || 'Item',
+        };
+      },
+    );
+
+    const { userIds, pointTitle, productName } = transactionResult;
+
+    if (userIds.length > 0) {
+      await this.notificationService
+        .notifyMany(userIds, {
+          type: NotificationType.REQUESTED_PRODUCT,
+          title: 'Entrega Confirmada!',
+          message: `Sua doação de ${productName} foi recebida pelo ponto "${pointTitle}". Muito obrigado!`,
+          severity: NotificationSeverity.INFO,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
+
+    return { ok: true };
   }
 }

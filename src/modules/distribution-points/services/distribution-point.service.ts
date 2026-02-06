@@ -1,11 +1,13 @@
 import {
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, FindOptionsRelations, Repository } from 'typeorm';
 import { DistributionPoint } from '../entities/distribution-point.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -22,6 +24,9 @@ import { PointRequestedProductsService } from './point-requested-product.service
 import { buildPagination } from 'src/common/helpers';
 import { getCoordinates } from '../../../common/utils';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
+import { NotificationService } from 'src/modules/notifications/notification.service';
+import { NotificationType } from 'src/modules/notifications/enums/notification-type.enum';
+import { NotificationSeverity } from 'src/modules/notifications/enums/notification-severity.enum';
 
 type SecurityActionType = 'update' | 'delete';
 interface ISecurity {
@@ -39,7 +44,10 @@ export class DistributionPointService {
 
     private readonly productsService: ProductsService,
 
+    @Inject(forwardRef(() => PointRequestedProductsService))
     private readonly requestedProductService: PointRequestedProductsService,
+
+    private readonly notificationService: NotificationService,
   ) {}
 
   private validateSecurity(
@@ -90,103 +98,130 @@ export class DistributionPointService {
       );
     }
 
-    return this.dataSource.transaction(async (transactionManager) => {
-      const distributionPointRepository =
-        transactionManager.getRepository(DistributionPoint);
-      const pointRequestedProductRepository = transactionManager.getRepository(
-        PointRequestedProduct,
-      );
-      const productsRepository = transactionManager.getRepository(Product);
-      const addressRepository = transactionManager.getRepository(Address);
+    const addressPayload = { ...body.address };
 
-      const address = body.address;
-
-      if (!address.latitude || !address.longitude) {
-        const coords = await getCoordinates(address);
-        if (coords) {
-          address.latitude = address.latitude ?? coords.latitude;
-          address.longitude = address.longitude ?? coords.longitude;
-        }
+    if (!addressPayload.latitude || !addressPayload.longitude) {
+      const coords = await getCoordinates(addressPayload);
+      if (coords) {
+        addressPayload.latitude = coords.latitude;
+        addressPayload.longitude = coords.longitude;
       }
+    }
 
-      const savedAddress = await addressRepository.save(
-        addressRepository.create({
-          cep: address.cep,
-          estado: address.estado,
-          pais: address.pais,
-          municipio: address.municipio,
-          bairro: address.bairro,
-          logradouro: address.logradouro,
-          numero: address.numero,
-          complemento: address.complemento ?? null,
-          latitude: address.latitude ?? null,
-          longitude: address.longitude ?? null,
-        }),
-      );
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const distributionPointRepository =
+          transactionManager.getRepository(DistributionPoint);
+        const pointRequestedProductRepository =
+          transactionManager.getRepository(PointRequestedProduct);
+        const productsRepository = transactionManager.getRepository(Product);
+        const addressRepository = transactionManager.getRepository(Address);
 
-      const distributionPoint = distributionPointRepository.create({
-        title: body.title,
-        description: body.description ?? null,
-        phone: body.phone,
-        ownerId,
-        status: DistributionPointStatus.PENDING,
-        address: savedAddress,
-      });
+        const savedAddress = await addressRepository.save(
+          addressRepository.create({
+            cep: addressPayload.cep,
+            estado: addressPayload.estado,
+            pais: addressPayload.pais,
+            municipio: addressPayload.municipio,
+            bairro: addressPayload.bairro,
+            logradouro: addressPayload.logradouro,
+            numero: addressPayload.numero,
+            complemento: addressPayload.complemento ?? null,
+            latitude: addressPayload.latitude ?? null,
+            longitude: addressPayload.longitude ?? null,
+          }),
+        );
 
-      const savedDistributionPoint =
-        await distributionPointRepository.save(distributionPoint);
+        const distributionPoint = distributionPointRepository.create({
+          title: body.title,
+          description: body.description ?? null,
+          phone: body.phone,
+          ownerId,
+          status: DistributionPointStatus.PENDING,
+          address: savedAddress,
+        });
 
-      const toSave: PointRequestedProduct[] = [];
+        const savedDistributionPoint =
+          await distributionPointRepository.save(distributionPoint);
 
-      for (const item of requestedProducts) {
-        const slug = this.productsService.normalizeSlug(item.slug || item.name);
+        const toSave: PointRequestedProduct[] = [];
 
-        let product = await productsRepository.findOne({ where: { slug } });
+        for (const item of requestedProducts) {
+          const slug = this.productsService.normalizeSlug(
+            item.slug || item.name,
+          );
 
-        if (!product) {
-          product = await productsRepository.save(
-            productsRepository.create({
-              name: item.name,
-              unit: item.unit,
-              slug,
-              active: true,
-            }),
+          let product = await productsRepository.findOne({ where: { slug } });
+
+          if (!product) {
+            product = await productsRepository.save(
+              productsRepository.create({
+                name: item.name,
+                unit: item.unit,
+                slug,
+                active: true,
+              }),
+            );
+          }
+
+          const computedStatus = this.requestedProductService.computeStatus(
+            item.requestedQuantity,
+            0,
+          );
+
+          const entity = pointRequestedProductRepository.create({
+            point: { id: savedDistributionPoint.id },
+            product: { id: product.id },
+            requestedQuantity: item.requestedQuantity,
+            donatedQuantity: 0,
+            status: computedStatus,
+            closesAt:
+              computedStatus === RequestedProductStatus.FULL
+                ? new Date()
+                : null,
+          });
+
+          toSave.push(entity);
+        }
+
+        await pointRequestedProductRepository.save(toSave);
+
+        const fullPoint = await distributionPointRepository.findOne({
+          where: { id: savedDistributionPoint.id },
+          relations: {
+            address: true,
+            files: true,
+          },
+        });
+
+        if (!fullPoint) {
+          throw new NotFoundException(
+            DistributionPointsMessagesHelper.POINT_NOT_FOUND_AFTER_CREATION,
           );
         }
 
-        const computeStatus = this.requestedProductService.computeStatus;
-        const computedStatus = computeStatus(item.requestedQuantity, 0);
+        return fullPoint;
+      },
+    );
 
-        const entity = pointRequestedProductRepository.create({
-          point: { id: savedDistributionPoint.id },
-          product: { id: product.id },
-          requestedQuantity: item.requestedQuantity,
-          donatedQuantity: 0,
-          status: computedStatus,
-          closesAt:
-            computedStatus === RequestedProductStatus.FULL ? new Date() : null,
-        });
+    if (transactionResult) {
+      const bairro = transactionResult.address?.bairro || 'sua região';
+      const cidade = transactionResult.address?.municipio || 'Cidade';
 
-        toSave.push(entity);
-      }
+      const notificationTitle = `Novo Ponto em ${bairro}!`;
+      const notificationMessage = `${transactionResult.title} acabou de abrir em ${cidade}. Toque para ver como ajudar.`;
 
-      await pointRequestedProductRepository.save(toSave);
+      await this.notificationService
+        .notifyAllUsers({
+          type: NotificationType.DISTRIBUTION,
+          title: notificationTitle,
+          message: notificationMessage,
+          severity: NotificationSeverity.INFO,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
 
-      const full = await distributionPointRepository.findOne({
-        where: { id: savedDistributionPoint.id },
-        relations: {
-          address: true,
-          files: true,
-        },
-      });
-
-      if (!full)
-        throw new NotFoundException(
-          DistributionPointsMessagesHelper.POINT_NOT_FOUND_AFTER_CREATION,
-        );
-
-      return full;
-    });
+    return transactionResult;
   }
 
   async list(query: ListDistributionPointsDto) {
@@ -246,13 +281,13 @@ export class DistributionPointService {
     };
   }
 
-  async findById(distributionPointId: string): Promise<DistributionPoint> {
+  async findById(
+    distributionPointId: string,
+    relations?: FindOptionsRelations<DistributionPoint>,
+  ): Promise<DistributionPoint> {
     const point = await this.repository.findOne({
       where: { id: distributionPointId },
-      relations: {
-        address: true,
-        files: true,
-      },
+      relations,
     });
 
     if (!point) {
@@ -269,110 +304,125 @@ export class DistributionPointService {
     body: UpdateDistributionPointDto,
     options?: ISecurity,
   ): Promise<DistributionPoint> {
-    const distributionPoint = await this.repository.findOne({
-      where: { id: distributionPointId },
-      relations: { address: true },
+    const distributionPoint = await this.findById(distributionPointId, {
+      address: true,
     });
-    if (!distributionPoint)
-      throw new NotFoundException(
-        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-      );
 
     this.validateSecurity(distributionPoint, 'update', options);
 
-    if (body.title !== undefined) {
-      distributionPoint.title = body.title;
-    }
+    const oldTitle = distributionPoint.title;
+    let addressChanged = false;
 
+    if (body.title !== undefined) distributionPoint.title = body.title;
     if (body.description !== undefined)
       distributionPoint.description = body.description ?? null;
+    if (body.phone !== undefined) distributionPoint.phone = body.phone;
 
-    if (body.phone !== undefined) {
-      distributionPoint.phone = body.phone;
-    }
-
-    if (body.address !== undefined && body.address) {
-      const address = body.address;
-
+    if (body.address) {
       if (!distributionPoint.address) {
         distributionPoint.address = new Address();
       }
 
-      if (address.cep !== undefined)
-        distributionPoint.address.cep = address.cep;
-      if (address.estado !== undefined)
-        distributionPoint.address.estado = address.estado;
-      if (address.pais !== undefined)
-        distributionPoint.address.pais = address.pais;
-      if (address.municipio !== undefined)
-        distributionPoint.address.municipio = address.municipio;
-      if (address.bairro !== undefined)
-        distributionPoint.address.bairro = address.bairro;
-      if (address.logradouro !== undefined)
-        distributionPoint.address.logradouro = address.logradouro;
-      if (address.numero !== undefined)
-        distributionPoint.address.numero = address.numero;
-      if (address.complemento !== undefined)
-        distributionPoint.address.complemento = address.complemento ?? null;
+      const addrBody = body.address;
+      const addrEntity = distributionPoint.address;
 
-      if (address.latitude !== undefined) {
-        distributionPoint.address.latitude = address.latitude ?? null;
-      }
-      if (address.longitude !== undefined) {
-        distributionPoint.address.longitude = address.longitude ?? null;
-      }
+      if (addrBody.cep !== undefined) addrEntity.cep = addrBody.cep;
+      if (addrBody.estado !== undefined) addrEntity.estado = addrBody.estado;
+      if (addrBody.pais !== undefined) addrEntity.pais = addrBody.pais;
+      if (addrBody.municipio !== undefined)
+        addrEntity.municipio = addrBody.municipio;
+      if (addrBody.bairro !== undefined) addrEntity.bairro = addrBody.bairro;
+      if (addrBody.logradouro !== undefined)
+        addrEntity.logradouro = addrBody.logradouro;
+      if (addrBody.numero !== undefined) addrEntity.numero = addrBody.numero;
+      if (addrBody.complemento !== undefined)
+        addrEntity.complemento = addrBody.complemento ?? null;
+      if (addrBody.latitude !== undefined)
+        addrEntity.latitude = addrBody.latitude ?? null;
+      if (addrBody.longitude !== undefined)
+        addrEntity.longitude = addrBody.longitude ?? null;
 
-      if (address.latitude === undefined && address.longitude === undefined) {
-        const coords = await getCoordinates(distributionPoint.address);
+      addressChanged = true;
+
+      if (addrBody.latitude === undefined && addrBody.longitude === undefined) {
+        const coords = await getCoordinates(addrEntity);
         if (coords) {
-          distributionPoint.address.latitude = coords.latitude;
-          distributionPoint.address.longitude = coords.longitude;
+          addrEntity.latitude = coords.latitude;
+          addrEntity.longitude = coords.longitude;
         }
       }
     }
 
-    return this.dataSource.transaction(async (transactionManager) => {
-      const distributionPointRepository =
-        transactionManager.getRepository(DistributionPoint);
-      const addressRepository = transactionManager.getRepository(Address);
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const distributionPointRepository =
+          transactionManager.getRepository(DistributionPoint);
+        const addressRepository = transactionManager.getRepository(Address);
 
-      if (distributionPoint.address) {
-        await addressRepository.save(distributionPoint.address);
+        if (distributionPoint.address) {
+          await addressRepository.save(distributionPoint.address);
+        }
+
+        await distributionPointRepository.save(distributionPoint);
+
+        const fullPoint = await distributionPointRepository.findOne({
+          where: { id: distributionPoint.id },
+          relations: {
+            address: true,
+            files: true,
+          },
+        });
+
+        if (!fullPoint)
+          throw new NotFoundException(
+            DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+          );
+        return fullPoint;
+      },
+    );
+
+    if (transactionResult) {
+      let title = 'Novidades no Ponto!';
+      let message = `O ponto ${transactionResult.title} atualizou suas informações.`;
+
+      if (addressChanged) {
+        title = 'Mudamos de Endereço!';
+        message = `O ponto ${transactionResult.title} está agora em ${transactionResult.address?.bairro || 'novo local'}. Confira!`;
+      } else if (oldTitle !== transactionResult.title) {
+        message = `O ponto agora se chama ${transactionResult.title}.`;
       }
 
-      await distributionPointRepository.save(distributionPoint);
+      await this.notificationService
+        .notifyAllUsers({
+          type: NotificationType.DISTRIBUTION,
+          title: title,
+          message: message,
+          severity: NotificationSeverity.INFO,
+        })
+        .catch((err) => console.error('Erro ao notificar em background', err));
+    }
 
-      const full = await distributionPointRepository.findOne({
-        where: { id: distributionPoint.id },
-        relations: {
-          address: true,
-          files: true,
-        },
-      });
-
-      if (!full)
-        throw new NotFoundException(
-          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-        );
-      return full;
-    });
+    return transactionResult;
   }
 
   async remove(
     distributionPointId: string,
     options?: ISecurity,
   ): Promise<{ ok: true }> {
-    const distributionPoint = await this.repository.findOne({
-      where: { id: distributionPointId },
-    });
-    if (!distributionPoint)
-      throw new NotFoundException(
-        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
-      );
+    const distributionPoint = await this.findById(distributionPointId);
 
     this.validateSecurity(distributionPoint, 'delete', options);
 
     await this.repository.delete({ id: distributionPointId });
+
+    await this.notificationService
+      .notifyAllUsers({
+        type: NotificationType.DISTRIBUTION,
+        title: 'Ponto Encerrado',
+        message: `O ponto de distribuição "${distributionPoint.title}" encerrou suas atividades.`,
+        severity: NotificationSeverity.WARNING,
+      })
+      .catch((err) => console.error('Erro ao notificar em background', err));
 
     return { ok: true };
   }
