@@ -14,7 +14,7 @@ import { DistributionPointModule } from '../distribution-points/distribution-poi
       dest: './uploads',
     }),
     forwardRef(() => AuthModule),
-    forwardRef(() => DistributionPointModule),
+    DistributionPointModule,
   ],
   controllers: [UploadController],
   providers: [UploadService],

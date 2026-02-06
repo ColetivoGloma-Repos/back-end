@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { Readable } from 'stream';
-import { DistributionPoint } from '../distribution-points/entities';
+import { DistributionPointService } from '../distribution-points/services';
 
 dotenv.config();
 
@@ -22,8 +22,8 @@ export class UploadService {
     private readonly fileRepository: Repository<FileUploadEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(DistributionPoint)
-    private readonly distribuitionPointsRepository: Repository<DistributionPoint>,
+
+    private readonly distributionPointService: DistributionPointService,
   ) {
     this.s3 = new S3Client({
       region: process.env.SPACES_REGION,
@@ -48,11 +48,8 @@ export class UploadService {
       if (!item) {
         throw new Error('User not found');
       }
-    } else if (itemType === 'distribuitionPoint') {
-      item = await this.distribuitionPointsRepository.findOneBy({ id: itemId });
-      if (!item) {
-        throw new Error('Distribuition Point not found');
-      }
+    } else if (itemType === 'distributionPoint') {
+      item = await this.distributionPointService.findById(itemId);
     } else {
       throw new Error('Invalid item type');
     }
