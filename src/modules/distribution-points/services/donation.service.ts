@@ -18,6 +18,7 @@ import {
   DonationMessagesHelper,
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
+import { NotificationMessageHelper } from '../shared/helpers';
 import { buildPagination } from 'src/common/helpers';
 import { EAuthRoles } from 'src/modules/auth/enums/auth';
 import { DistributionPoint } from '../entities';
@@ -197,8 +198,12 @@ export class DonationsService {
           .create({
             userId: savedDonation.userId,
             type: NotificationType.DONATION,
-            title: 'Doação Realizada!',
-            message: `Sua doação de ${quantity}x ${productName || 'item'} para o ponto "${pointTitle}" foi registrada.`,
+            title: NotificationMessageHelper.DONATION_REGISTERED_TITLE,
+            message: NotificationMessageHelper.DONATION_REGISTERED_MESSAGE(
+              quantity,
+              productName || 'item',
+              pointTitle,
+            ),
             severity: NotificationSeverity.INFO,
           })
           .catch((err) =>
@@ -211,8 +216,12 @@ export class DonationsService {
           .create({
             userId: pointOwnerId,
             type: NotificationType.DONATION,
-            title: 'Nova Doação Recebida!',
-            message: `O ponto "${pointTitle}" recebeu uma doação de ${quantity}x ${productName || 'item'}.`,
+            title: NotificationMessageHelper.DONATION_RECEIVED_TITLE,
+            message: NotificationMessageHelper.DONATION_RECEIVED_MESSAGE(
+              quantity,
+              productName || 'item',
+              pointTitle,
+            ),
             severity: NotificationSeverity.INFO,
           })
           .catch((err) =>
@@ -450,11 +459,13 @@ export class DonationsService {
         .create({
           userId: sendId,
           type: NotificationType.DISTRIBUTION,
-          title: 'Doação Cancelada',
-          message: `Uma doação no ponto ${distributionPoint.title || ''} foi cancelada.`,
+          title: NotificationMessageHelper.DONATION_CANCELED_TITLE,
+          message: NotificationMessageHelper.DONATION_CANCELED_MESSAGE(
+            distributionPoint.title || '',
+          ),
           severity: NotificationSeverity.WARNING,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return { ok: true };
@@ -574,11 +585,13 @@ export class DonationsService {
         .create({
           userId: savedDonation.userId,
           type: NotificationType.DISTRIBUTION,
-          title: 'Doação Entregue!',
-          message: `Sua doação no ponto ${distributionPoint.title} foi confirmada com sucesso. Obrigado!`,
+          title: NotificationMessageHelper.DONATION_DELIVERED_TITLE,
+          message: NotificationMessageHelper.DONATION_DELIVERED_MESSAGE(
+            distributionPoint.title,
+          ),
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return savedDonation;

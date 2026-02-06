@@ -19,6 +19,7 @@ import {
   UpdateDistributionPointDto,
 } from '../dto/distribution-point';
 import { DistributionPointsMessagesHelper } from '../shared/helpers';
+import { NotificationMessageHelper } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
 import { PointRequestedProductsService } from './point-requested-product.service';
 import { buildPagination } from 'src/common/helpers';
@@ -208,8 +209,13 @@ export class DistributionPointService {
       const bairro = transactionResult.address?.bairro || 'sua região';
       const cidade = transactionResult.address?.municipio || 'Cidade';
 
-      const notificationTitle = `Novo Ponto em ${bairro}!`;
-      const notificationMessage = `${transactionResult.title} acabou de abrir em ${cidade}. Toque para ver como ajudar.`;
+      const notificationTitle =
+        NotificationMessageHelper.POINT_CREATED_TITLE(bairro);
+      const notificationMessage =
+        NotificationMessageHelper.POINT_CREATED_MESSAGE(
+          transactionResult.title,
+          cidade,
+        );
 
       await this.notificationService
         .notifyAllUsers({
@@ -218,7 +224,7 @@ export class DistributionPointService {
           message: notificationMessage,
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return transactionResult;
@@ -382,14 +388,21 @@ export class DistributionPointService {
     );
 
     if (transactionResult) {
-      let title = 'Novidades no Ponto!';
-      let message = `O ponto ${transactionResult.title} atualizou suas informações.`;
+      let title = NotificationMessageHelper.POINT_UPDATED_TITLE;
+      let message = NotificationMessageHelper.POINT_UPDATED_MESSAGE(
+        transactionResult.title,
+      );
 
       if (addressChanged) {
-        title = 'Mudamos de Endereço!';
-        message = `O ponto ${transactionResult.title} está agora em ${transactionResult.address?.bairro || 'novo local'}. Confira!`;
+        title = NotificationMessageHelper.POINT_ADDRESS_CHANGED_TITLE;
+        message = NotificationMessageHelper.POINT_ADDRESS_CHANGED_MESSAGE(
+          transactionResult.title,
+          transactionResult.address?.bairro || 'novo local',
+        );
       } else if (oldTitle !== transactionResult.title) {
-        message = `O ponto agora se chama ${transactionResult.title}.`;
+        message = NotificationMessageHelper.POINT_NAME_CHANGED_MESSAGE(
+          transactionResult.title,
+        );
       }
 
       await this.notificationService
@@ -399,7 +412,7 @@ export class DistributionPointService {
           message: message,
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return transactionResult;
@@ -418,11 +431,13 @@ export class DistributionPointService {
     await this.notificationService
       .notifyAllUsers({
         type: NotificationType.DISTRIBUTION,
-        title: 'Ponto Encerrado',
-        message: `O ponto de distribuição "${distributionPoint.title}" encerrou suas atividades.`,
+        title: NotificationMessageHelper.POINT_CLOSED_TITLE,
+        message: NotificationMessageHelper.POINT_CLOSED_MESSAGE(
+          distributionPoint.title,
+        ),
         severity: NotificationSeverity.WARNING,
       })
-      .catch((err) => console.error('Erro ao notificar em background', err));
+      .catch((err) => console.error('Error notifying in background', err));
 
     return { ok: true };
   }

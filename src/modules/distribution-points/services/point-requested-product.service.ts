@@ -29,6 +29,7 @@ import {
   DistributionPointsMessagesHelper,
   PointRequestedProductsMessagesHelper,
 } from '../shared/helpers';
+import { NotificationMessageHelper } from '../shared/helpers';
 import { ProductsService } from 'src/modules/products/products.service';
 import { Donation } from '../entities';
 import { buildPagination } from 'src/common/helpers';
@@ -295,11 +296,14 @@ export class PointRequestedProductsService {
       await this.notificationService
         .notifyAllUsers({
           type: NotificationType.REQUESTED_PRODUCT,
-          title: 'Precisamos da sua ajuda!',
-          message: `O ponto "${pointTitle}" está precisando de: ${itemsText}.`,
+          title: NotificationMessageHelper.HELP_NEEDED_TITLE,
+          message: NotificationMessageHelper.HELP_NEEDED_MESSAGE(
+            pointTitle,
+            itemsText,
+          ),
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return savedRequests;
@@ -521,17 +525,24 @@ export class PointRequestedProductsService {
     const productName = savedRequestedProduct.product?.name || 'Produto';
 
     let shouldNotify = false;
-    let notificationTitle = 'Meta atualizada';
-    let notificationMessage = `As necessidades do ponto ${pointTitle} foram atualizadas.`;
+    let notificationTitle = NotificationMessageHelper.GOAL_UPDATED_TITLE;
+    let notificationMessage =
+      NotificationMessageHelper.GOAL_UPDATED_MESSAGE(pointTitle);
 
     if (currentQuantity > oldRequestedQuantity) {
       shouldNotify = true;
-      notificationTitle = 'Precisamos de mais ajuda!';
-      notificationMessage = `O ponto ${pointTitle} aumentou a meta de ${productName}. Ainda precisamos de doações!`;
+      notificationTitle = NotificationMessageHelper.MORE_HELP_NEEDED_TITLE;
+      notificationMessage = NotificationMessageHelper.MORE_HELP_NEEDED_MESSAGE(
+        pointTitle,
+        productName,
+      );
     } else if (productNameChanged) {
       shouldNotify = true;
-      notificationTitle = 'Correção de item';
-      notificationMessage = `Houve uma correção na descrição do item ${productName} no ponto ${pointTitle}.`;
+      notificationTitle = NotificationMessageHelper.ITEM_CORRECTION_TITLE;
+      notificationMessage = NotificationMessageHelper.ITEM_CORRECTION_MESSAGE(
+        productName,
+        pointTitle,
+      );
     }
 
     if (shouldNotify) {
@@ -542,7 +553,7 @@ export class PointRequestedProductsService {
           message: notificationMessage,
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return savedRequestedProduct;
@@ -573,11 +584,14 @@ export class PointRequestedProductsService {
     await this.notificationService
       .notifyAllUsers({
         type: NotificationType.REQUESTED_PRODUCT,
-        title: 'Meta Atualizada',
-        message: `O ponto "${pointTitle}" não precisa mais de doações de ${productName} no momento.`,
+        title: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_TITLE,
+        message: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_MESSAGE(
+          pointTitle,
+          productName,
+        ),
         severity: NotificationSeverity.WARNING,
       })
-      .catch((err) => console.error('Erro ao notificar em background', err));
+      .catch((err) => console.error('Error notifying in background', err));
 
     return { ok: true };
   }
@@ -667,11 +681,15 @@ export class PointRequestedProductsService {
         .create({
           userId: pointOwnerId,
           type: NotificationType.REQUESTED_PRODUCT,
-          title: 'Doação Cancelada',
-          message: `${donorName} cancelou a doação de ${totalCanceled}x ${productName}.`,
+          title: NotificationMessageHelper.USER_CANCELED_DONATION_TITLE,
+          message: NotificationMessageHelper.USER_CANCELED_DONATION_MESSAGE(
+            donorName,
+            totalCanceled,
+            productName,
+          ),
           severity: NotificationSeverity.WARNING,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return { ok: true };
@@ -762,11 +780,14 @@ export class PointRequestedProductsService {
       await this.notificationService
         .notifyMany(userIds, {
           type: NotificationType.REQUESTED_PRODUCT,
-          title: 'Entrega Confirmada!',
-          message: `Sua doação de ${productName} foi recebida pelo ponto "${pointTitle}". Muito obrigado!`,
+          title: NotificationMessageHelper.DELIVERY_CONFIRMED_TITLE,
+          message: NotificationMessageHelper.DELIVERY_CONFIRMED_MESSAGE(
+            productName,
+            pointTitle,
+          ),
           severity: NotificationSeverity.INFO,
         })
-        .catch((err) => console.error('Erro ao notificar em background', err));
+        .catch((err) => console.error('Error notifying in background', err));
     }
 
     return { ok: true };
