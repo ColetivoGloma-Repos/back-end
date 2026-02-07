@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, In, Not, Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dtos/create-notification.dto';
 import { User } from '../auth/entities/auth.enity';
 import { paginate } from 'src/utils/paginate-result.service';
+
+interface NotifyAllOptions {
+  excludeIds?: string[];
+}
 
 const CHUNK_SIZE = 1000;
 
@@ -26,10 +30,25 @@ export class NotificationService {
   }
 
   async notifyAllUsers(
-    createNotificationDto: CreateNotificationDto,
+    createNotificationDto?: CreateNotificationDto,
+    options?: NotifyAllOptions,
   ): Promise<{ count: number }> {
+    if (!createNotificationDto) {
+      return { count: 0 };
+    }
+
+    let whereCondition: FindOptionsWhere<User> = {};
+
+    if (options?.excludeIds?.length) {
+      const uniqueExcludedIds = [...new Set(options.excludeIds)];
+      whereCondition = {
+        id: Not(In(uniqueExcludedIds)),
+      };
+    }
+
     const users = await this.usersRepository.find({
       select: ['id'],
+      where: whereCondition,
     });
 
     if (!users.length) return { count: 0 };

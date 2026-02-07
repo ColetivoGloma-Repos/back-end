@@ -206,6 +206,7 @@ export class DistributionPointService {
     );
 
     if (transactionResult) {
+      const ownerId = transactionResult.ownerId;
       const bairro = transactionResult.address?.bairro || 'sua região';
       const cidade = transactionResult.address?.municipio || 'Cidade';
 
@@ -218,12 +219,17 @@ export class DistributionPointService {
         );
 
       await this.notificationService
-        .notifyAllUsers({
-          type: NotificationType.DISTRIBUTION,
-          title: notificationTitle,
-          message: notificationMessage,
-          severity: NotificationSeverity.INFO,
-        })
+        .notifyAllUsers(
+          {
+            type: NotificationType.DISTRIBUTION,
+            title: notificationTitle,
+            message: notificationMessage,
+            severity: NotificationSeverity.INFO,
+          },
+          {
+            excludeIds: [ownerId],
+          },
+        )
         .catch((err) => console.error('Error notifying in background', err));
     }
 
@@ -388,6 +394,7 @@ export class DistributionPointService {
     );
 
     if (transactionResult) {
+      const ownerId = transactionResult.ownerId;
       let title = NotificationMessageHelper.POINT_UPDATED_TITLE;
       let message = NotificationMessageHelper.POINT_UPDATED_MESSAGE(
         transactionResult.title,
@@ -406,12 +413,17 @@ export class DistributionPointService {
       }
 
       await this.notificationService
-        .notifyAllUsers({
-          type: NotificationType.DISTRIBUTION,
-          title: title,
-          message: message,
-          severity: NotificationSeverity.INFO,
-        })
+        .notifyAllUsers(
+          {
+            type: NotificationType.DISTRIBUTION,
+            title: title,
+            message: message,
+            severity: NotificationSeverity.INFO,
+          },
+          {
+            excludeIds: [ownerId],
+          },
+        )
         .catch((err) => console.error('Error notifying in background', err));
     }
 
@@ -428,15 +440,22 @@ export class DistributionPointService {
 
     await this.repository.delete({ id: distributionPointId });
 
+    const ownerId = distributionPoint.ownerId;
+
     await this.notificationService
-      .notifyAllUsers({
-        type: NotificationType.DISTRIBUTION,
-        title: NotificationMessageHelper.POINT_CLOSED_TITLE,
-        message: NotificationMessageHelper.POINT_CLOSED_MESSAGE(
-          distributionPoint.title,
-        ),
-        severity: NotificationSeverity.WARNING,
-      })
+      .notifyAllUsers(
+        {
+          type: NotificationType.DISTRIBUTION,
+          title: NotificationMessageHelper.POINT_CLOSED_TITLE,
+          message: NotificationMessageHelper.POINT_CLOSED_MESSAGE(
+            distributionPoint.title,
+          ),
+          severity: NotificationSeverity.WARNING,
+        },
+        {
+          excludeIds: [ownerId],
+        },
+      )
       .catch((err) => console.error('Error notifying in background', err));
 
     return { ok: true };

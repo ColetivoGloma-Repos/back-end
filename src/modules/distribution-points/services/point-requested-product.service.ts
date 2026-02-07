@@ -545,14 +545,19 @@ export class PointRequestedProductsService {
       );
     }
 
+    const ownerId = savedRequestedProduct.point.ownerId;
+
     if (shouldNotify) {
       await this.notificationService
-        .notifyAllUsers({
-          type: NotificationType.REQUESTED_PRODUCT,
-          title: notificationTitle,
-          message: notificationMessage,
-          severity: NotificationSeverity.INFO,
-        })
+        .notifyAllUsers(
+          {
+            type: NotificationType.REQUESTED_PRODUCT,
+            title: notificationTitle,
+            message: notificationMessage,
+            severity: NotificationSeverity.INFO,
+          },
+          { excludeIds: [ownerId] },
+        )
         .catch((err) => console.error('Error notifying in background', err));
     }
 
@@ -581,16 +586,21 @@ export class PointRequestedProductsService {
     const productName = requestedProduct.product.name;
     const pointTitle = distributionPoint.title;
 
+    const ownerId = distributionPoint.ownerId;
+
     await this.notificationService
-      .notifyAllUsers({
-        type: NotificationType.REQUESTED_PRODUCT,
-        title: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_TITLE,
-        message: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_MESSAGE(
-          pointTitle,
-          productName,
-        ),
-        severity: NotificationSeverity.WARNING,
-      })
+      .notifyAllUsers(
+        {
+          type: NotificationType.REQUESTED_PRODUCT,
+          title: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_TITLE,
+          message: NotificationMessageHelper.ITEM_NO_LONGER_NEEDED_MESSAGE(
+            pointTitle,
+            productName,
+          ),
+          severity: NotificationSeverity.WARNING,
+        },
+        { excludeIds: [ownerId] },
+      )
       .catch((err) => console.error('Error notifying in background', err));
 
     return { ok: true };
