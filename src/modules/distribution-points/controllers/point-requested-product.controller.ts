@@ -52,7 +52,7 @@ export class PointRequestedProductsController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   async findById(@Param('id') id: string): Promise<PointRequestedProduct> {
-    return this.pointRequestedProductsService.findById(id);
+    return this.pointRequestedProductsService.findById(id, { product: true });
   }
 
   @Patch(':id')
