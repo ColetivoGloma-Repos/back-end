@@ -52,14 +52,14 @@ export class DashboardController {
         return this.shelterService.listAll(query)        
     }
 
-    @ApiBearerAuth()
+  /*  @ApiBearerAuth()
     @UseGuards(AuthGuard('jwt'), RolesGuard) 
     @Roles('admin')
     @Get('/admins-initiative')        
     async AdminInitiative(@Query() query: RequestCoordinator) {
         return this.dashboardService.findAllAdminInitiative(query)        
     }
-/* Adjusts here
+   Adjusts here
     @ApiBearerAuth()
     @UseGuards(AuthGuard('jwt'), RolesGuard) 
     @Roles('admin')
