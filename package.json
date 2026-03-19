@@ -5,8 +5,13 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
   "scripts": {
     "build": "nest build",
+    "heroku-postbuild": "npm run build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -20,9 +25,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "typeorm:sync": "npx ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:sync -d ./src/database/dataSource.ts",
-    "exec:sync:server": "yarn typeorm:sync && yarn start:prod",
+    "exec:sync:server": "npm run typeorm:sync && npm run start:prod",
     "migration:generate": "npm run typeorm -- migration:generate -d ./src/database/dataSource.ts -n",
-    "dev": "yarn start:dev"
+    "dev": "npm run start:dev"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
