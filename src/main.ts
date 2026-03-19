@@ -3,10 +3,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { corsOptions } from './config/cors.options';
 import { appConfig } from './config/app.config';
-import { EnvConfig } from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: corsOptions });
+  const port = Number(process.env.PORT) || 8080;
   app.setGlobalPrefix('api');
 
   const config = new DocumentBuilder()
@@ -25,18 +25,9 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/document', app, document);
   appConfig(app);
-
-  if (EnvConfig.ENV !== 'production') {
-    await app.listen(8080);
-  } else {
-    await app.init();
-
-    app.listen(8080, () => {
-      console.log('Server is running on http://localhost:8080');
-    });
-
-    app.enableCors(corsOptions);
-  }
+  app.enableCors(corsOptions);
+  await app.listen(port);
+  console.log(`Server is running on port ${port}`);
 }
 
 bootstrap();
