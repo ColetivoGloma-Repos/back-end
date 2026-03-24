@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -124,7 +125,11 @@ export class AuthService {
       };
       const token = this.jwtService.sign(payload);
 
-      await this.mailService.sendWelcomeMail(newUser.email, newUser.name);
+      try {
+        await this.mailService.sendWelcomeMail(newUser.email, newUser.name);
+      } catch (mailError) {
+        logger.error('Falha ao enviar e-mail de boas-vindas:', mailError);
+      }
 
       return { token };
     } catch (error) {
@@ -401,11 +406,18 @@ export class AuthService {
     });
 
     const resetLink = `https://app.coletivogloma.com.br/reset-password?token=${token}`;
-    await this.mailService.sendMailLocawebBase(
-      user.email,
-      'Recuperação de senha - Coletivo Gloma',
-      `Olá, ${user.name}!\n\nClique no link para redefinir sua senha: ${resetLink}\n\nEste link expira em 1 hora.\n\nSe você não solicitou a recuperação de senha, ignore este e-mail.\n\nEquipe Coletivo Gloma`
-    );
+    try {
+      await this.mailService.sendMailLocawebBase(
+        user.email,
+        'Recuperação de senha - Coletivo Gloma',
+        `Olá, ${user.name}!\n\nClique no link para redefinir sua senha: ${resetLink}\n\nEste link expira em 1 hora.\n\nSe você não solicitou a recuperação de senha, ignore este e-mail.\n\nEquipe Coletivo Gloma`
+      );
+    } catch (mailError) {
+      logger.error('Falha ao enviar e-mail de recuperação de senha:', mailError);
+      throw new ServiceUnavailableException(
+        'Não foi possível enviar o e-mail de recuperação de senha. O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.'
+      );
+    }
 
     return { message: 'E-mail de recuperação enviado com sucesso.' };
   }
