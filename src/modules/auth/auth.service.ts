@@ -89,6 +89,7 @@ export class AuthService {
         status: user.status,
         code: user.code,
         address: user.address,
+        isAdminInitiative: user.isAdminInitiative,
         url: fileUrl,       
       },
     };
