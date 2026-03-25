@@ -3,29 +3,26 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { SearchDto } from './dto/searchDTO';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Shelter } from '../shelter/entities/shelter.entity';
 import { Repository } from 'typeorm';
-import { DistribuitionPoints } from '../distriuition-points/entities/distribuition-point.entity';
 import { NeedVolunteers } from '../need/entities/needVolunteers.entity';
 import { NeedItem } from '../need/entities/needItems.entity';
 import { RequestShelterDTO } from './dto/requestShelterDTO';
 import { RequestNeedsDTO } from './dto/requestNeedsDTO';
 import logger from 'src/logger';
-import { Priority } from '../need/enums/enumPriority';
-import { Status } from '../need/enums/enumsStatus';
 import { RequestNearbyDTO } from './dto/requestNearbyDTO';
 import { Address } from '../auth/entities/adress.enity';
 import { geoResult } from '../company/utils/geoResult';
+import { DistributionPoint } from '../distribution-points/entities';
 
 @Injectable()
 export class SearchService {
   constructor(
     @InjectRepository(Shelter)
     private shelterRepository: Repository<Shelter>,
-    @InjectRepository(DistribuitionPoints)
-    private distributionRepository: Repository<DistribuitionPoints>,
+    @InjectRepository(DistributionPoint)
+    private distributionRepository: Repository<DistributionPoint>,
     @InjectRepository(NeedVolunteers)
     private needVolunteerRepository: Repository<NeedVolunteers>,
     @InjectRepository(NeedItem)
@@ -90,7 +87,7 @@ export class SearchService {
 
   async findDistribututionPoints(
     query: RequestShelterDTO,
-  ): Promise<DistribuitionPoints[]> {
+  ): Promise<DistributionPoint[]> {
     const { name, neighborhood, street, city, state } = query;
 
     const queryBuilder = this.distributionRepository
@@ -99,10 +96,10 @@ export class SearchService {
       .leftJoinAndSelect('d.creator', 'creator')
       .select([
         'd.id',
-        'd.name',
+        'd.title',
         'd.phone',
         'd.description',
-        'd.creator',
+        'd.owner',
         'address.bairro',
         'address.logradouro',
         'address.municipio',
@@ -110,9 +107,9 @@ export class SearchService {
         'address.numero',
         'address.complemento',
         'address.cep',
-        'creator.id',
-        'creator.name',
-        'creator.email',
+        'owner.id',
+        'owner.name',
+        'owner.email',
       ]);
 
     if (name) {
@@ -306,7 +303,7 @@ export class SearchService {
 
   async findNearbyDistributionPoint(
     query: RequestNearbyDTO,
-  ): Promise<DistribuitionPoints[]> {
+  ): Promise<DistributionPoint[]> {
     const radius: number = Number(query.radius);
 
     if (isNaN(radius)) {
@@ -324,10 +321,10 @@ export class SearchService {
       .leftJoinAndSelect('d.creator', 'creator')
       .select([
         'd.id',
-        'd.name',
+        'd.title',
         'd.phone',
         'd.description',
-        'd.creator',
+        'd.owner',
         'address.bairro',
         'address.logradouro',
         'address.municipio',
@@ -337,9 +334,9 @@ export class SearchService {
         'address.cep',
         'address.latitude',
         'address.longitude',
-        'creator.id',
-        'creator.name',
-        'creator.email',
+        'owner.id',
+        'owner.name',
+        'owner.email',
       ])
       .where(
         `6371 * acos(cos(radians(:userLatitude)) * cos(radians(address.latitude)) * cos(radians(address.longitude) - radians(:userLongitude)) + sin(radians(:userLatitude)) * sin(radians(address.latitude))) < :radius`,
