@@ -26,18 +26,9 @@ async function bootstrap() {
 
   SwaggerModule.setup('api/document', app, document);
   appConfig(app);
-
-  if (EnvConfig.ENV !== 'production') {
-    await app.listen(8081);
-  } else {
-    await app.init();
-
-    app.listen(8080, () => {
-      console.log('Server is running on http://localhost:8080');
-    });
-
-    app.enableCors(corsOptions);
-  }
+  app.enableCors(corsOptions);
+  await app.listen(port);
+  console.log(`Server is running on port ${port}`);
 }
 
 bootstrap();
