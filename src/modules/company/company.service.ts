@@ -57,8 +57,8 @@ export class CompanyService {
     const salt = await genSalt();
     company.password = await hash(company.password, salt);
     const address = await this.addressRepository.save(company.address);
-    const newAddress = await geoResult(address);
-    const updatedAddress = await this.addressRepository.save(newAddress);
+    // const newAddress = await geoResult(address);
+    const updatedAddress = await this.addressRepository.save(address);
     company.address = updatedAddress;
 
     //Lógica logo

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,7 +27,6 @@ import { geoResult } from '../company/utils/geoResult';
 import { MailService } from '../mail/mail.service';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { Shelter } from '../shelter/entities/shelter.entity';
 
 
 @Injectable()
@@ -41,8 +41,6 @@ export class AuthService {
     private jwtService: JwtService,
     private companyService: CompanyService,
     private mailService: MailService, 
-    @InjectRepository(Shelter)
-    private shelterRepository: Repository<Shelter>,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -124,7 +122,11 @@ export class AuthService {
       };
       const token = this.jwtService.sign(payload);
 
-      await this.mailService.sendWelcomeMail(newUser.email, newUser.name);
+      try {
+        await this.mailService.sendWelcomeMail(newUser.email, newUser.name);
+      } catch (mailError) {
+        logger.error('Falha ao enviar e-mail de boas-vindas:', mailError);
+      }
 
       return { token };
     } catch (error) {
@@ -260,8 +262,8 @@ export class AuthService {
   const address = new Address();
   address.pais = 'Brazil';
   Object.assign(address, updates.address);
-  const newAddress = await geoResult(address);
-  const saveAddress = await this.addressRepository.save(newAddress);
+  // const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(address);
 
   user.address = saveAddress;
   }
@@ -277,27 +279,17 @@ export class AuthService {
 
   }
   public async changeUserCategory(userId: string): Promise<void> {
-  const user = await this.getProfile(userId);
+    const user = await this.getProfile(userId);
 
-  if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
-    throw new BadRequestException('Dados inválidos.');
-  }
-
-   const shelters = await this.shelterRepository
-      .createQueryBuilder('shelter')
-      .leftJoin('shelter.coordinators', 'coordinator')
-      .where('coordinator.id = :userId', { userId })
-      .getMany();
+    if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
+      throw new BadRequestException('Dados inválidos.');
+    }
 
     if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
-      if (!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) && shelters.length > 0) {
-        user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN);
-      } else {
-        throw new BadRequestException('Usuário já cadastrado como coordenador.');
-      }
-    } else {
-      user.data.roles.push(EAuthRoles.COORDINATOR);
+      throw new BadRequestException('Usuário já cadastrado como coordenador.');
     }
+
+    user.data.roles.push(EAuthRoles.COORDINATOR);
 
     await this.usersRepository.save(user.data);
   }
@@ -401,11 +393,18 @@ export class AuthService {
     });
 
     const resetLink = `https://app.coletivogloma.com.br/reset-password?token=${token}`;
-    await this.mailService.sendMailLocawebBase(
-      user.email,
-      'Recuperação de senha - Coletivo Gloma',
-      `Olá, ${user.name}!\n\nClique no link para redefinir sua senha: ${resetLink}\n\nEste link expira em 1 hora.\n\nSe você não solicitou a recuperação de senha, ignore este e-mail.\n\nEquipe Coletivo Gloma`
-    );
+    try {
+      await this.mailService.sendMailLocawebBase(
+        user.email,
+        'Recuperação de senha - Coletivo Gloma',
+        `Olá, ${user.name}!\n\nClique no link para redefinir sua senha: ${resetLink}\n\nEste link expira em 1 hora.\n\nSe você não solicitou a recuperação de senha, ignore este e-mail.\n\nEquipe Coletivo Gloma`
+      );
+    } catch (mailError) {
+      logger.error('Falha ao enviar e-mail de recuperação de senha:', mailError);
+      throw new ServiceUnavailableException(
+        'Não foi possível enviar o e-mail de recuperação de senha. O serviço de e-mail está temporariamente indisponível. Tente novamente em alguns minutos.'
+      );
+    }
 
     return { message: 'E-mail de recuperação enviado com sucesso.' };
   }
