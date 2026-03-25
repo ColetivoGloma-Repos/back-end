@@ -15,7 +15,7 @@ export class MailService {
     });
 
     const mailOptions = {
-      from: 'coletivogloma@info.coletivogloma.com.br', 
+      from: 'coletivogloma@envios.coletivogloma.com.br', 
       to,
       subject,
       text: body,
