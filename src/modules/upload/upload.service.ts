@@ -7,8 +7,8 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
 import { User } from 'src/modules/auth/entities/auth.enity';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
 import { Readable } from 'stream';
+import { DistributionPointService } from '../distribution-points/services';
 
 dotenv.config();
 
@@ -22,8 +22,8 @@ export class UploadService {
     private readonly fileRepository: Repository<FileUploadEntity>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(DistribuitionPoints)
-    private readonly distribuitionPointsRepository: Repository<DistribuitionPoints>,
+
+    private readonly distributionPointService: DistributionPointService,
   ) {
     this.s3 = new S3Client({
       region: process.env.SPACES_REGION,
@@ -37,18 +37,19 @@ export class UploadService {
     this.bucket = process.env.SPACES_BUCKET;
   }
 
-  async uploadFile(file: Express.Multer.File, itemType: string, itemId: string): Promise<FileUploadEntity> {
+  async uploadFile(
+    file: Express.Multer.File,
+    itemType: string,
+    itemId: string,
+  ): Promise<FileUploadEntity> {
     let item;
     if (itemType === 'user') {
       item = await this.userRepository.findOneBy({ id: itemId });
       if (!item) {
         throw new Error('User not found');
       }
-    } else if (itemType === 'distribuitionPoint') {
-      item = await this.distribuitionPointsRepository.findOneBy({ id: itemId });
-      if (!item) {
-        throw new Error('Distribuition Point not found');
-      }
+    } else if (itemType === 'distributionPoint') {
+      item = await this.distributionPointService.findById(itemId);
     } else {
       throw new Error('Invalid item type');
     }
@@ -79,7 +80,7 @@ export class UploadService {
       url: fileUrl,
       ref: fileKey,
       type: file.mimetype,
-      [itemType]: item, 
+      [itemType]: item,
     });
 
     return this.fileRepository.save(newFile);

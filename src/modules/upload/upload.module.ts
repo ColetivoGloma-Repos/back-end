@@ -5,7 +5,7 @@ import { UploadController } from './upload.controller';
 import { UploadService } from './upload.service';
 import { FileUploadEntity } from './entities/file.entity';
 import { AuthModule } from '../auth/auth.module';
-import { DistribuitionPointsModule } from '../distriuition-points/distribuition-point.module';
+import { DistributionPointModule } from '../distribution-points/distribution-point.module';
 
 @Module({
   imports: [
@@ -14,7 +14,7 @@ import { DistribuitionPointsModule } from '../distriuition-points/distribuition-
       dest: './uploads',
     }),
     forwardRef(() => AuthModule),
-    forwardRef(() => DistribuitionPointsModule),
+    DistributionPointModule,
   ],
   controllers: [UploadController],
   providers: [UploadService],

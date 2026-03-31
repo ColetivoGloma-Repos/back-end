@@ -3,14 +3,20 @@ import { SearchService } from './search.service';
 import { SearchController } from './search.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Shelter } from '../shelter/entities/shelter.entity';
-import { DistribuitionPoints } from '../distriuition-points/entities/distribuition-point.entity';
 import { NeedItem } from '../need/entities/needItems.entity';
 import { NeedVolunteers } from '../need/entities/needVolunteers.entity';
+import { DistributionPoint } from '../distribution-points/entities';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Shelter, DistribuitionPoints, NeedItem, NeedVolunteers])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Shelter,
+      DistributionPoint,
+      NeedItem,
+      NeedVolunteers,
+    ]),
+  ],
   providers: [SearchService],
-  controllers: [SearchController]
-
+  controllers: [SearchController],
 })
 export class SearchModule {}

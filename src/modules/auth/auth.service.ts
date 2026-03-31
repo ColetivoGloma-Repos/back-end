@@ -27,7 +27,6 @@ import { geoResult } from '../company/utils/geoResult';
 import { MailService } from '../mail/mail.service';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { Shelter } from '../shelter/entities/shelter.entity';
 
 
 @Injectable()
@@ -42,8 +41,6 @@ export class AuthService {
     private jwtService: JwtService,
     private companyService: CompanyService,
     private mailService: MailService, 
-    @InjectRepository(Shelter)
-    private shelterRepository: Repository<Shelter>,
   ) {}
 
   async validateUser(payload: JwtPayload) {
@@ -265,8 +262,8 @@ export class AuthService {
   const address = new Address();
   address.pais = 'Brazil';
   Object.assign(address, updates.address);
-  const newAddress = await geoResult(address);
-  const saveAddress = await this.addressRepository.save(newAddress);
+  // const newAddress = await geoResult(address);
+  const saveAddress = await this.addressRepository.save(address);
 
   user.address = saveAddress;
   }
@@ -282,27 +279,17 @@ export class AuthService {
 
   }
   public async changeUserCategory(userId: string): Promise<void> {
-  const user = await this.getProfile(userId);
+    const user = await this.getProfile(userId);
 
-  if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
-    throw new BadRequestException('Dados inválidos.');
-  }
-
-   const shelters = await this.shelterRepository
-      .createQueryBuilder('shelter')
-      .leftJoin('shelter.coordinators', 'coordinator')
-      .where('coordinator.id = :userId', { userId })
-      .getMany();
+    if (!user?.data?.roles || !Array.isArray(user.data.roles)) {
+      throw new BadRequestException('Dados inválidos.');
+    }
 
     if (user.data.roles.includes(EAuthRoles.COORDINATOR)) {
-      if (!user.data.roles.includes(EAuthRoles.INITIATIVE_ADMIN) && shelters.length > 0) {
-        user.data.roles.push(EAuthRoles.INITIATIVE_ADMIN);
-      } else {
-        throw new BadRequestException('Usuário já cadastrado como coordenador.');
-      }
-    } else {
-      user.data.roles.push(EAuthRoles.COORDINATOR);
+      throw new BadRequestException('Usuário já cadastrado como coordenador.');
     }
+
+    user.data.roles.push(EAuthRoles.COORDINATOR);
 
     await this.usersRepository.save(user.data);
   }

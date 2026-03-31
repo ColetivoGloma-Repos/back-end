@@ -1,6 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from 'src/modules/auth/entities/auth.enity';
-import { DistribuitionPoints } from 'src/modules/distriuition-points/entities/distribuition-point.entity';
+import { DistributionPoint } from 'src/modules/distribution-points/entities';
 
 @Entity('files')
 export class FileUploadEntity {
@@ -22,9 +28,9 @@ export class FileUploadEntity {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User, user => user.files, { nullable: true })
+  @ManyToOne(() => User, (user) => user.files, { nullable: true })
   user: User;
 
-  @ManyToOne(() => DistribuitionPoints, dp => dp.files, { nullable: true })
-  distribuitionPoint: DistribuitionPoints;
+  @ManyToOne(() => DistributionPoint, (dp) => dp.files, { nullable: true })
+  distribuitionPoint: DistributionPoint;
 }
