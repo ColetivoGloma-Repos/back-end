@@ -15,8 +15,8 @@ export class Product {
   id!: string;
 
   @Index({ unique: true })
-  @Column({ type: 'varchar', length: 200 })
-  slug!: string;
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  slug!: string | null;
 
   @Column({ type: 'varchar', length: 200 })
   name!: string;
@@ -39,3 +39,4 @@ export class Product {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 }
+
