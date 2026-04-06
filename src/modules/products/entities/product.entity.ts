@@ -18,8 +18,8 @@ export class Product {
   @Column({ type: 'varchar', length: 200, nullable: true })
   slug!: string | null;
 
-  @Column({ type: 'varchar', length: 200 })
-  name!: string;
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  name!: string | null;
 
   @Column({ type: 'varchar', length: 30, nullable: true })
   unit!: string | null;
