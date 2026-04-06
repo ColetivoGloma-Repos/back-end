@@ -2,19 +2,27 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, ILike, Repository } from 'typeorm';
+import { EntityManager, ILike, IsNull, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { ListProductsDto, CreateProductDto, UpdateProductDto } from './dto';
 import { ProductMessagesHelper } from './shared';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     @InjectRepository(Product)
     private readonly repository: Repository<Product>,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.backfillMissingSlugs();
+  }
 
   normalizeSlug(value: string): string {
     return value
@@ -24,6 +32,34 @@ export class ProductsService {
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-+)|(-+$)/g, '');
+  }
+
+  private async backfillMissingSlugs(): Promise<void> {
+    const missingSlugs = await this.repository.find({
+      where: [{ slug: IsNull() }, { slug: '' }],
+      select: ['id', 'name', 'slug'],
+    });
+
+    if (missingSlugs.length === 0) {
+      return;
+    }
+
+    for (const product of missingSlugs) {
+      const base = this.normalizeSlug(product.name || 'product') || 'product';
+      let slug = base;
+      let suffix = 1;
+
+      while (true) {
+        const existing = await this.repository.findOne({ where: { slug } });
+        if (!existing || existing.id === product.id) break;
+        slug = `${base}-${suffix}`;
+        suffix += 1;
+      }
+
+      await this.repository.update(product.id, { slug });
+    }
+
+    this.logger.log(`Backfilled slug for ${missingSlugs.length} products.`);
   }
 
   async create(body: CreateProductDto): Promise<Product> {
