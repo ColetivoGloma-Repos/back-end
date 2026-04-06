@@ -21,7 +21,7 @@ export class ProductsService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.backfillMissingSlugs();
+    await this.backfillLegacyProducts();
   }
 
   normalizeSlug(value: string): string {
@@ -34,18 +34,23 @@ export class ProductsService implements OnModuleInit {
       .replace(/(^-+)|(-+$)/g, '');
   }
 
-  private async backfillMissingSlugs(): Promise<void> {
-    const missingSlugs = await this.repository.find({
-      where: [{ slug: IsNull() }, { slug: '' }],
+  private async backfillLegacyProducts(): Promise<void> {
+    const legacyProducts = await this.repository.find({
+      where: [{ slug: IsNull() }, { slug: '' }, { name: IsNull() }, { name: '' }],
       select: ['id', 'name', 'slug'],
     });
 
-    if (missingSlugs.length === 0) {
+    if (legacyProducts.length === 0) {
       return;
     }
 
-    for (const product of missingSlugs) {
-      const base = this.normalizeSlug(product.name || 'product') || 'product';
+    for (const product of legacyProducts) {
+      const resolvedName =
+        product.name?.trim() ||
+        product.slug?.replace(/-/g, ' ') ||
+        `Product ${product.id.slice(0, 8)}`;
+
+      const base = this.normalizeSlug(product.slug || resolvedName || 'product') || 'product';
       let slug = base;
       let suffix = 1;
 
@@ -56,10 +61,10 @@ export class ProductsService implements OnModuleInit {
         suffix += 1;
       }
 
-      await this.repository.update(product.id, { slug });
+      await this.repository.update(product.id, { name: resolvedName, slug });
     }
 
-    this.logger.log(`Backfilled slug for ${missingSlugs.length} products.`);
+    this.logger.log(`Backfilled legacy data for ${legacyProducts.length} products.`);
   }
 
   async create(body: CreateProductDto): Promise<Product> {
