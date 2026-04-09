@@ -16,6 +16,7 @@ dotenv.config();
 export class UploadService {
   private s3: S3Client;
   private bucket: string;
+  private endpoint: string;
 
   constructor(
     @InjectRepository(FileUploadEntity)
@@ -25,16 +26,41 @@ export class UploadService {
 
     private readonly distributionPointService: DistributionPointService,
   ) {
+    const spacesRegion = process.env.SPACES_REGION?.trim();
+    const spacesEndpoint =
+      process.env.SPACES_ENDPOINT?.trim() ||
+      (spacesRegion ? `https://${spacesRegion}.digitaloceanspaces.com` : '');
+    const accessKeyId =
+      process.env.SPACES_ACCESS_KEY?.trim() ||
+      process.env.ACCESSKEYID?.trim() ||
+      '';
+    const secretAccessKey =
+      process.env.SPACES_SECRET_KEY?.trim() ||
+      process.env.SECRETACCESSKEY?.trim() ||
+      process.env.SECRETCCESSKEY?.trim() ||
+      '';
+    const bucket =
+      process.env.SPACES_BUCKET?.trim() || process.env.BUCKET?.trim() || '';
+    const region =
+      spacesRegion || process.env.REGION?.trim() || 'us-east-1';
+
+    if (!spacesEndpoint || !accessKeyId || !secretAccessKey || !bucket) {
+      throw new Error(
+        'S3/Spaces configuration is invalid. Set SPACES_ENDPOINT, SPACES_ACCESS_KEY, SPACES_SECRET_KEY, and SPACES_BUCKET.',
+      );
+    }
+
     this.s3 = new S3Client({
-      region: process.env.SPACES_REGION,
-      endpoint: process.env.SPACES_ENDPOINT,
+      region,
+      endpoint: spacesEndpoint,
       credentials: {
-        accessKeyId: process.env.SPACES_ACCESS_KEY,
-        secretAccessKey: process.env.SPACES_SECRET_KEY,
+        accessKeyId,
+        secretAccessKey,
       },
     });
 
-    this.bucket = process.env.SPACES_BUCKET;
+    this.bucket = bucket;
+    this.endpoint = spacesEndpoint;
   }
 
   async uploadFile(
@@ -73,7 +99,7 @@ export class UploadService {
 
     await upload.done();
 
-    const fileUrl = `${process.env.SPACES_ENDPOINT}/${this.bucket}/${fileKey}`;
+    const fileUrl = `${this.endpoint}/${this.bucket}/${fileKey}`;
 
     const newFile = this.fileRepository.create({
       filename: file.originalname,
