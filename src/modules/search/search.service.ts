@@ -92,14 +92,14 @@ export class SearchService {
 
     const queryBuilder = this.distributionRepository
       .createQueryBuilder('d')
-      .leftJoin('d.address', 'address')
-      .leftJoinAndSelect('d.creator', 'creator')
+      .leftJoinAndSelect('d.address', 'address')
+      .leftJoinAndSelect('d.owner', 'owner')
+      .leftJoinAndSelect('d.files', 'files')
       .select([
         'd.id',
         'd.title',
         'd.phone',
         'd.description',
-        'd.owner',
         'address.bairro',
         'address.logradouro',
         'address.municipio',
@@ -107,6 +107,9 @@ export class SearchService {
         'address.numero',
         'address.complemento',
         'address.cep',
+        'files.id',
+        'files.url',
+        'files.createdAt',
         'owner.id',
         'owner.name',
         'owner.email',
@@ -318,13 +321,13 @@ export class SearchService {
     const queryBuilder = this.distributionRepository
       .createQueryBuilder('d')
       .leftJoinAndSelect('d.address', 'address')
-      .leftJoinAndSelect('d.creator', 'creator')
+      .leftJoinAndSelect('d.owner', 'owner')
+      .leftJoinAndSelect('d.files', 'files')
       .select([
         'd.id',
         'd.title',
         'd.phone',
         'd.description',
-        'd.owner',
         'address.bairro',
         'address.logradouro',
         'address.municipio',
@@ -334,6 +337,9 @@ export class SearchService {
         'address.cep',
         'address.latitude',
         'address.longitude',
+        'files.id',
+        'files.url',
+        'files.createdAt',
         'owner.id',
         'owner.name',
         'owner.email',

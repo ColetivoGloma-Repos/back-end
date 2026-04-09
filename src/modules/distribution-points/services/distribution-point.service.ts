@@ -242,8 +242,10 @@ export class DistributionPointService {
     const queryBuilder = this.repository
       .createQueryBuilder('distributionPoint')
       .leftJoinAndSelect('distributionPoint.address', 'address')
+      .leftJoinAndSelect('distributionPoint.files', 'files')
       .leftJoin('distributionPoint.requestedProducts', 'requestedProduct')
       .leftJoin('requestedProduct.product', 'product')
+      .distinct(true)
       .take(pagination.take)
       .skip(pagination.skip);
 

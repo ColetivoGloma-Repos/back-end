@@ -9,6 +9,7 @@ import * as dotenv from 'dotenv';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { Readable } from 'stream';
 import { DistributionPointService } from '../distribution-points/services';
+import { DistributionPoint } from '../distribution-points/entities';
 
 dotenv.config();
 
@@ -68,7 +69,7 @@ export class UploadService {
     itemType: string,
     itemId: string,
   ): Promise<FileUploadEntity> {
-    let item;
+    let item: User | DistributionPoint;
     if (itemType === 'user') {
       item = await this.userRepository.findOneBy({ id: itemId });
       if (!item) {
@@ -101,12 +102,19 @@ export class UploadService {
 
     const fileUrl = `${this.endpoint}/${this.bucket}/${fileKey}`;
 
+    const relationPayload: Partial<FileUploadEntity> = {};
+    if (itemType === 'user') {
+      relationPayload.user = item as User;
+    } else if (itemType === 'distributionPoint') {
+      relationPayload.distribuitionPoint = item as DistributionPoint;
+    }
+
     const newFile = this.fileRepository.create({
       filename: file.originalname,
       url: fileUrl,
       ref: fileKey,
       type: file.mimetype,
-      [itemType]: item,
+      ...relationPayload,
     });
 
     return this.fileRepository.save(newFile);
