@@ -101,7 +101,7 @@ export class AuthService {
       });
 
       if (existingUser) {
-        throw new ConflictException('Email já está em uso');
+        throw new ConflictException('Email já  cadastrado');
       }
 
       const user = new User();
@@ -247,16 +247,24 @@ export class AuthService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
+    const normalizedEmail = updates.email?.trim().toLowerCase();
+
+    if (normalizedEmail && user.email?.toLowerCase() !== normalizedEmail) {
+      const existingAnotherUser = await this.usersRepository.findOne({
+        where: { email: normalizedEmail },
+      });
+
+      if (existingAnotherUser) {
+        throw new ConflictException('Email já cadastrado');
+      }
+
+      updates.email = normalizedEmail;
+
+    }
+
     if (updates.password) {
       updates.password = await hash(updates.password, 10);
     }
-  
-    /**
-     * Se o usuário tentar alterar o email, podemos ter emails
-     * repetidos no banco, é bom adicionar uma lógica pra
-     * impedir isso ou só impedir que essa rota seja usada pra
-     * isso, criando uma outra so pro email
-     */
 
   if (updates.address) {
   const address = new Address();
@@ -302,7 +310,7 @@ export class AuthService {
     const company = await this.companyService.findByEmail(email);
 
     if (!user && !company) {
-      throw new Error('Usuário não encontrado');
+      throw new NotFoundException('Usuário não encontrado.');
     }
     let token = '';
     if (company && !user) {
@@ -323,7 +331,7 @@ export class AuthService {
     const passwordMatches = await compare(password, user.password);
 
     if (!passwordMatches) {
-      throw new Error('Senha inválida');
+      throw new NotFoundException('Senha inválida');
     }
 
     const payload = {
