@@ -12,7 +12,11 @@ import { Donation } from '../entities/donation.entity';
 import { PointRequestedProduct } from '../entities/point-requested-product.entity';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { DonationStatus, RequestedProductStatus } from '../shared';
-import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
+import {
+  CreateDonationDto,
+  ListDonationsDto,
+  UpdateDonationCollectionTypeDto,
+} from '../dto/donation';
 import {
   DistributionPointsMessagesHelper,
   DonationMessagesHelper,
@@ -161,6 +165,7 @@ export class DonationsService {
           distributionPointId: requestedProduct.distributionPointId,
           quantity,
           status: DonationStatus.ACTIVE,
+          collectionType: body.collectionType ?? null,
         });
 
         const savedDonation = await donationRepository.save(donation);
@@ -469,6 +474,44 @@ export class DonationsService {
     }
 
     return { ok: true };
+  }
+
+  async updateCollectionType(
+    donationId: string,
+    body: UpdateDonationCollectionTypeDto,
+    security?: ISecurity,
+  ): Promise<Donation> {
+    const donation = await this.repository.findOne({ where: { id: donationId } });
+
+    if (!donation) {
+      throw new NotFoundException(DonationMessagesHelper.DONATION_NOT_FOUND);
+    }
+
+    const distributionPoint = await this.dataSource
+      .getRepository(DistributionPoint)
+      .findOne({
+        where: { id: donation.distributionPointId },
+        select: ['id', 'ownerId'],
+      });
+
+    if (!distributionPoint) {
+      throw new NotFoundException(
+        DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+      );
+    }
+
+    const { roles, userId } = security || {};
+    const isAdmin = roles?.includes(EAuthRoles.ADMIN);
+    const isCoordinator = distributionPoint.ownerId === userId;
+
+    if (!isAdmin && !isCoordinator) {
+      throw new ForbiddenException(
+        PointRequestedProductsMessagesHelper.ONLY_OWNER_OR_ADMIN_CAN_CONFIRM_DELIVERY,
+      );
+    }
+
+    donation.collectionType = body.collectionType;
+    return this.repository.save(donation);
   }
 
   async delivered(donationId: string, security?: ISecurity): Promise<Donation> {

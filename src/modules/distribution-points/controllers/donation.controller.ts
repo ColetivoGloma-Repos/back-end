@@ -12,7 +12,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { DonationsService } from '../services/donation.service';
-import { CreateDonationDto, ListDonationsDto } from '../dto/donation';
+import {
+  CreateDonationDto,
+  ListDonationsDto,
+  UpdateDonationCollectionTypeDto,
+} from '../dto/donation';
 import { Donation } from '../entities/donation.entity';
 import { CurrentUser } from 'src/modules/auth/decorators/current-user.decorator';
 import { CreateUserDto } from 'src/modules/auth/dto/auth.dto';
@@ -60,6 +64,21 @@ export class DonationController {
     @Param('id') id: string,
   ): Promise<{ ok: true }> {
     return this.donationsService.cancel(id, {
+      roles: currentUser.roles,
+      userId: currentUser.id,
+    });
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
+  async updateCollectionType(
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('id') id: string,
+    @Body() body: UpdateDonationCollectionTypeDto,
+  ): Promise<Donation> {
+    return this.donationsService.updateCollectionType(id, body, {
       roles: currentUser.roles,
       userId: currentUser.id,
     });

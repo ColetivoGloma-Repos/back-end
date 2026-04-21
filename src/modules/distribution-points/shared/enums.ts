@@ -11,6 +11,11 @@ export enum DonationStatus {
   DELIVERED = 'DELIVERED',
 }
 
+export enum DonationCollectionType {
+  DELIVERY = 'DELIVERY',
+  PICKUP = 'PICKUP',
+}
+
 export enum DistributionPointStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
