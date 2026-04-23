@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { User } from 'src/modules/auth/entities/auth.enity';
 import { PointRequestedProduct } from './point-requested-product.entity';
-import { DonationStatus } from '../shared';
+import { DonationCollectionType, DonationStatus } from '../shared';
 
 @Entity('donations')
 export class Donation {
@@ -52,6 +52,14 @@ export class Donation {
     default: DonationStatus.ACTIVE,
   })
   status!: DonationStatus;
+
+  @Column({
+    type: 'enum',
+    enum: DonationCollectionType,
+    nullable: true,
+    default: null,
+  })
+  collectionType!: DonationCollectionType | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

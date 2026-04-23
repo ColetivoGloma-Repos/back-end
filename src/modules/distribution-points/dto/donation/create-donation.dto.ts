@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -8,6 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { CommonMessagesHelper } from 'src/common/helpers';
+import { DonationCollectionType } from '../../shared';
 
 export class CreateDonationDto {
   @ApiProperty({
@@ -47,4 +49,14 @@ export class CreateDonationDto {
     message: CommonMessagesHelper.FIELD_INVALID_TYPE('userId', 'string'),
   })
   userId?: string;
+
+  @ApiPropertyOptional({
+    enum: DonationCollectionType,
+    description: 'Tipo de coleta: o doador entrega (DELIVERY) ou precisa de coleta (PICKUP)',
+  })
+  @IsOptional()
+  @IsEnum(DonationCollectionType, {
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('collectionType', 'enum'),
+  })
+  collectionType?: DonationCollectionType;
 }
