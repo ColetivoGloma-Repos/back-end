@@ -244,6 +244,7 @@ export class DonationsService {
     const queryBuilder = this.repository
       .createQueryBuilder('donation')
       .leftJoinAndSelect('donation.user', 'user')
+      .leftJoin('user.address', 'address')
       .leftJoin('donation.requestedProduct', 'requestedProduct')
       .leftJoin('requestedProduct.product', 'product')
       .leftJoin('requestedProduct.point', 'point')
@@ -252,6 +253,12 @@ export class DonationsService {
         'user.name',
         'user.email',
         'user.phone',
+        'address.logradouro',
+        'address.numero',
+        'address.bairro',
+        'address.municipio',
+        'address.estado',
+        'address.cep',
         'requestedProduct.id',
         'product.id',
         'product.name',
