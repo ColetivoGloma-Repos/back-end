@@ -593,7 +593,9 @@ export class DonationsService {
         const deliveredQuantity = requestedProduct.deliveredQuantity;
         const requestedQuantity = requestedProduct.requestedQuantity;
 
-        if (deliveredQuantity >= donatedQuantity) {
+        const donationQty = Number(donation.quantity ?? 0);
+
+        if (deliveredQuantity + donationQty > donatedQuantity) {
           throw new ConflictException(
             PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
           );
@@ -602,13 +604,7 @@ export class DonationsService {
         donation.status = DonationStatus.DELIVERED;
         const savedDonation = await donationRepository.save(donation);
 
-        const nextDelivered = deliveredQuantity + 1;
-
-        if (nextDelivered > donatedQuantity) {
-          throw new ConflictException(
-            PointRequestedProductsMessagesHelper.GOAL_ALREADY_REACHED,
-          );
-        }
+        const nextDelivered = deliveredQuantity + donationQty;
 
         requestedProduct.deliveredQuantity = nextDelivered;
 
