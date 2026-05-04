@@ -298,10 +298,13 @@ export class DistributionPointService {
   async findById(
     distributionPointId: string,
     relations?: FindOptionsRelations<DistributionPoint>,
-  ): Promise<DistributionPoint> {
+  ): Promise<any> {
     const point = await this.repository.findOne({
       where: { id: distributionPointId },
-      relations,
+      relations: {
+        owner: true,
+        ...relations,
+      },
     });
 
     if (!point) {
@@ -310,7 +313,28 @@ export class DistributionPointService {
       );
     }
 
-    return point;
+    // Sanitize coordinators if they are loaded
+    let sanitizedCoordinators: any = point.coordinators;
+    if (point.coordinators) {
+      sanitizedCoordinators = point.coordinators.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        hasVehicle: c.hasVehicle,
+      }));
+    }
+
+    return {
+      ...point,
+      coordinators: sanitizedCoordinators,
+      owner: point.owner ? {
+        id: point.owner.id,
+        name: point.owner.name,
+        phone: point.owner.phone,
+        hasVehicle: point.owner.hasVehicle,
+      } : null,
+      ownerName: point.owner?.name,
+    };
   }
 
   async update(
@@ -461,5 +485,140 @@ export class DistributionPointService {
       .catch((err) => console.error('Error notifying in background', err));
 
     return { ok: true };
+  }
+ 
+  async addCoordinator(
+    distributionPointId: string,
+    body: UpdateDistributionPointDto,
+    options?: ISecurity,
+  ): Promise<DistributionPoint> {
+    const distributionPoint = await this.findById(distributionPointId, {
+      coordinators: true,
+    });
+
+    this.validateSecurity(distributionPoint, 'update', options);
+
+    const coordinatorId = (body as any).coordinatorId;
+    if (!coordinatorId) {
+      throw new ConflictException(
+        'coordinatorId é obrigatório para adicionar um coordenador',
+      );
+    }
+
+    if (
+      distributionPoint.coordinators &&
+      distributionPoint.coordinators.some((c: any) => c.id === coordinatorId)
+    ) {
+      throw new ConflictException(
+        'Este coordenador já foi adicionado a este ponto de distribuição',
+      );
+    }
+
+    const transactionResult = await this.dataSource.transaction(
+      async (transactionManager) => {
+        const distributionPointRepository =
+          transactionManager.getRepository(DistributionPoint);
+
+        // Reload to ensure fresh coordinators array
+        const point = await distributionPointRepository.findOne({
+          where: { id: distributionPointId },
+          relations: { coordinators: true },
+        });
+
+        if (!point) {
+          throw new NotFoundException(
+            DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+          );
+        }
+
+        if (!point.coordinators) {
+          point.coordinators = [];
+        }
+        
+        point.coordinators.push({ id: coordinatorId } as any);
+
+        const savedPoint = await distributionPointRepository.save(point);
+
+        const fullPoint = await distributionPointRepository.findOne({
+          where: { id: savedPoint.id },
+          relations: {
+            address: true,
+            files: true,
+            coordinators: true,
+          },
+        });
+
+        return fullPoint;
+      },
+    );
+
+    return transactionResult;
+  }
+
+  async removeCoordinator(
+    distributionPointId: string,
+    coordinatorId: string,
+    options?: ISecurity,
+  ): Promise<{ ok: true }> {
+    const distributionPoint = await this.findById(distributionPointId, {
+      coordinators: true,
+    });
+
+    this.validateSecurity(distributionPoint, 'update', options);
+
+    if (
+      !distributionPoint.coordinators ||
+      !distributionPoint.coordinators.some((c: any) => c.id === coordinatorId)
+    ) {
+      throw new NotFoundException(
+        'Coordenador não encontrado neste ponto de distribuição',
+      );
+    }
+
+    await this.dataSource.transaction(async (transactionManager) => {
+      const distributionPointRepository =
+        transactionManager.getRepository(DistributionPoint);
+
+      const point = await distributionPointRepository.findOne({
+        where: { id: distributionPointId },
+        relations: { coordinators: true },
+      });
+
+      if (!point) {
+        throw new NotFoundException(
+          DistributionPointsMessagesHelper.POINT_NOT_FOUND,
+        );
+      }
+   
+      point.coordinators = point.coordinators.filter(
+        (c: any) => c.id !== coordinatorId,
+      );
+
+      await distributionPointRepository.save(point);
+    });
+
+    return { ok: true };
+  }
+
+  async listCoordinators(
+    distributionPointId: string,
+  ): Promise<{ coordinators: any[] }> {
+    const distributionPoint = await this.findById(distributionPointId, {
+      coordinators: true,
+    });
+
+    const sanitizedCoordinators = (distributionPoint.coordinators || []).map(
+      (coordinator: any) => ({
+        id: coordinator.id,
+        name: coordinator.name,
+        phone: coordinator.phone,
+        email: coordinator.email,
+        hasVehicle: coordinator.hasVehicle,
+      }),
+    );
+
+    return {
+      coordinators: sanitizedCoordinators,
+    };
   }
 }

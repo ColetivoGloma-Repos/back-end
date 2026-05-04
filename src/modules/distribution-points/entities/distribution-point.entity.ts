@@ -6,6 +6,8 @@ import {
   Entity,
   Index,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   OneToOne,
@@ -57,6 +59,12 @@ export class DistributionPoint {
   @OneToOne(() => Address, (address) => address)
   @JoinColumn()
   address: Address;
+
+  @ManyToMany(() => User, (user) => user.distributionPointCoordinators, {
+    nullable: true,
+  })
+  @JoinTable()
+  coordinators: User[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

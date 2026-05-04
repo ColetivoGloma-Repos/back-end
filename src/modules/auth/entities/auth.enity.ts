@@ -73,6 +73,15 @@ export class User {
   })
   shelters: Shelter[];
 
+  @ManyToMany(
+    () => DistributionPoint,
+    (distributionPoint) => distributionPoint.coordinators,
+    {
+      nullable: true,
+    },
+  )
+  distributionPointCoordinators: DistributionPoint[];
+
   @OneToMany(() => Shelter, (shelter) => shelter.creator, {
     nullable: true,
   })
