@@ -81,4 +81,15 @@ export class CreateDistributionPointDto {
     message: CommonMessagesHelper.FIELD_INVALID_TYPE('userId', 'string'),
   })
   userId?: string;
+
+  @ApiPropertyOptional({
+    example: 'b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e',
+    format: 'uuid',
+    description: 'ID do abrigo associado a este ponto de distribuição',
+  })
+  @IsOptional()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('shelterId', 'string'),
+  })
+  shelterId?: string;
 }

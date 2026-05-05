@@ -197,6 +197,15 @@ export class ShelterService {
     };
   }
 
+  async changeStatus(shelterId: string, status: string): Promise<Shelter> {
+    const shelter = await this.shelterRepository.findOne({ where: { id: shelterId } });
+    if (!shelter) {
+      throw new NotFoundException(ShelterMessagesHelper.SHELTER_NOT_FOUND);
+    }
+    shelter.status = status as any;
+    return this.shelterRepository.save(shelter);
+  }
+
   async remove(shelterId: string) {
     const shelter = await this.findOne(shelterId);
     shelter.deletedAt = new Date();

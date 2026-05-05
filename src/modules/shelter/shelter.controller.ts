@@ -33,7 +33,7 @@ export class ShelterController {
 
   @Post('/')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('coordinator', 'user')
+  @Roles('coordinator', 'user', 'admin')
   @ApiBearerAuth()
   async create(
     @CurrentUser() currentUser: CreateUserDto,

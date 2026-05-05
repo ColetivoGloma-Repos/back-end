@@ -13,6 +13,7 @@ import {
   DonationsService,
 } from './services';
 import { NotificationModule } from '../notifications/notification.module';
+import { ShelterModule } from '../shelter/shelter.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { NotificationModule } from '../notifications/notification.module';
     ]),
     NotificationModule,
     ProductsModule,
+    ShelterModule,
   ],
   providers: [
     DistributionPointService,

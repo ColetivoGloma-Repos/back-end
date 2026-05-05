@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Repository } from "typeorm";
 import { User } from "../auth/entities/auth.enity";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -6,11 +6,17 @@ import { RequestCoordinator } from "./dto/RequestCoordinators";
 import { Paginate } from "src/common/interface";
 import { ChangeCoordinatorStatusDto } from "./dto/ChangeCoordinatorStatusDto";
 import { CoordinatorDto } from "./dto/CoordinatorsDto";
+import { DistributionPoint } from "../distribution-points/entities/distribution-point.entity";
+import { DistributionPointStatus } from "../distribution-points/shared/enums";
 
 @Injectable()
 export class DashboardService {
-    constructor(@InjectRepository(User)
-        private usersRepository: Repository<User>,){}
+    constructor(
+        @InjectRepository(User)
+        private usersRepository: Repository<User>,
+        @InjectRepository(DistributionPoint)
+        private distributionPointRepository: Repository<DistributionPoint>,
+    ){}
 
     async findAllCoordinator(query: RequestCoordinator): Promise<Paginate<CoordinatorDto>> {
 
@@ -60,6 +66,14 @@ export class DashboardService {
         }
     }
 
- 
+    async changeDistributionPointStatus(id: string, status: DistributionPointStatus): Promise<string> {
+        const point = await this.distributionPointRepository.findOne({ where: { id } });
+        if (!point) {
+            throw new NotFoundException("Ponto de distribuição não encontrado.");
+        }
+        point.status = status;
+        await this.distributionPointRepository.save(point);
+        return point.status;
+    }
 
 }

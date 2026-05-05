@@ -13,6 +13,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Status } from 'src/modules/auth/enums/auth';
 
 @Entity()
 export class Shelter {
@@ -27,6 +28,9 @@ export class Shelter {
 
   @Column({ nullable: true })
   description: string;
+
+  @Column({ type: 'enum', enum: Status, default: Status.WAITING })
+  status: Status;
 
   @OneToOne(() => Address, (address) => address)
   @JoinColumn()
