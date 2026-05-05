@@ -313,13 +313,13 @@ export class DistributionPointService {
       );
     }
 
-    // Sanitize coordinators if they are loaded
     let sanitizedCoordinators: any = point.coordinators;
     if (point.coordinators) {
       sanitizedCoordinators = point.coordinators.map((c: any) => ({
         id: c.id,
         name: c.name,
         phone: c.phone,
+        email: c.email,
         hasVehicle: c.hasVehicle,
       }));
     }
@@ -488,20 +488,15 @@ export class DistributionPointService {
   }
  
   async addCoordinator(
-    distributionPointId: string,
-    body: UpdateDistributionPointDto,
-    options?: ISecurity,
+    distributionPointId: string, coordinatorId: string,
   ): Promise<DistributionPoint> {
     const distributionPoint = await this.findById(distributionPointId, {
       coordinators: true,
     });
-
-    this.validateSecurity(distributionPoint, 'update', options);
-
-    const coordinatorId = (body as any).coordinatorId;
+    
     if (!coordinatorId) {
       throw new ConflictException(
-        'coordinatorId é obrigatório para adicionar um coordenador',
+        'É obrigatório informar o coordenador é obrigatório para adicionar um coordenador',
       );
     }
 
@@ -519,8 +514,7 @@ export class DistributionPointService {
         const distributionPointRepository =
           transactionManager.getRepository(DistributionPoint);
 
-        // Reload to ensure fresh coordinators array
-        const point = await distributionPointRepository.findOne({
+          const point = await distributionPointRepository.findOne({
           where: { id: distributionPointId },
           relations: { coordinators: true },
         });
@@ -557,14 +551,11 @@ export class DistributionPointService {
 
   async removeCoordinator(
     distributionPointId: string,
-    coordinatorId: string,
-    options?: ISecurity,
+    coordinatorId: string
   ): Promise<{ ok: true }> {
     const distributionPoint = await this.findById(distributionPointId, {
       coordinators: true,
     });
-
-    this.validateSecurity(distributionPoint, 'update', options);
 
     if (
       !distributionPoint.coordinators ||

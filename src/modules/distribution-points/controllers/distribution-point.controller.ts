@@ -85,13 +85,9 @@ export class DistributionPointController {
   @Roles('coordinator', 'admin')
   async addCoordinator(
     @CurrentUser() currentUser: CreateUserDto,
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() body: UpdateDistributionPointDto,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
   ): Promise<DistributionPoint> {
-    return this.service.addCoordinator(id, body, {
-      roles: currentUser.roles,
-      userId: currentUser.id,
-    });
+    return this.service.addCoordinator(id, currentUser.id);
   }
 
   @Delete(':id([0-9a-fA-F-]{36})/coordinator/:coordinatorId([0-9a-fA-F-]{36})')
@@ -103,10 +99,7 @@ export class DistributionPointController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Param('coordinatorId', new ParseUUIDPipe({ version: '4' })) coordinatorId: string,
   ): Promise<{ ok: true }> {
-    return this.service.removeCoordinator(id, coordinatorId, {
-      roles: currentUser.roles,
-      userId: currentUser.id,
-    });
+    return this.service.removeCoordinator(id, currentUser.id);
   }
 
   @Delete(':id([0-9a-fA-F-]{36})')
