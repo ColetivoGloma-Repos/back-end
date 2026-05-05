@@ -15,6 +15,7 @@ import {
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 import { PointRequestedProduct } from './point-requested-product.entity';
 import { DistributionPointStatus } from '../shared';
+import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
 
 @Entity('distribution_points')
 export class DistributionPoint {
@@ -57,6 +58,14 @@ export class DistributionPoint {
   @OneToOne(() => Address, (address) => address)
   @JoinColumn()
   address: Address;
+
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  shelterId: string | null;
+
+  @ManyToOne(() => Shelter, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'shelterId' })
+  shelter: Shelter | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

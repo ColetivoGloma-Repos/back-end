@@ -51,4 +51,16 @@ export class UpdateDistributionPointDto {
   @ValidateNested({ message: CommonMessagesHelper.FIELD_INVALID('address') })
   @Type(() => UpdateAddressDto)
   address?: UpdateAddressDto;
+
+  @ApiPropertyOptional({
+    example: 'b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e',
+    format: 'uuid',
+    description: 'ID do abrigo associado a este ponto de distribuição',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString({
+    message: CommonMessagesHelper.FIELD_INVALID_TYPE('shelterId', 'string'),
+  })
+  shelterId?: string | null;
 }
