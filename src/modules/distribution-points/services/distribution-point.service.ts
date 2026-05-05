@@ -437,6 +437,15 @@ export class DistributionPointService {
     return transactionResult;
   }
 
+  async changeStatus(
+    distributionPointId: string,
+    status: DistributionPointStatus,
+  ): Promise<DistributionPoint> {
+    const point = await this.findById(distributionPointId);
+    point.status = status;
+    return this.repository.save(point);
+  }
+
   async remove(
     distributionPointId: string,
     options?: ISecurity,
