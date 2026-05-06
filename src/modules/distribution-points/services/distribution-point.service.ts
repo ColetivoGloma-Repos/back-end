@@ -140,6 +140,7 @@ export class DistributionPointService {
           ownerId,
           status: DistributionPointStatus.PENDING,
           address: savedAddress,
+          shelterId: body.shelterId ?? null,
         });
 
         const savedDistributionPoint =
@@ -192,6 +193,7 @@ export class DistributionPointService {
           relations: {
             address: true,
             files: true,
+            shelter: true,
           },
         });
 
@@ -355,6 +357,8 @@ export class DistributionPointService {
     if (body.description !== undefined)
       distributionPoint.description = body.description ?? null;
     if (body.phone !== undefined) distributionPoint.phone = body.phone;
+    if (body.shelterId !== undefined)
+      distributionPoint.shelterId = body.shelterId ?? null;
 
     if (body.address) {
       if (!distributionPoint.address) {
@@ -408,6 +412,7 @@ export class DistributionPointService {
           relations: {
             address: true,
             files: true,
+            shelter: true,
           },
         });
 
@@ -454,6 +459,15 @@ export class DistributionPointService {
     }
 
     return transactionResult;
+  }
+
+  async changeStatus(
+    distributionPointId: string,
+    status: DistributionPointStatus,
+  ): Promise<DistributionPoint> {
+    const point = await this.findById(distributionPointId);
+    point.status = status;
+    return this.repository.save(point);
   }
 
   async remove(

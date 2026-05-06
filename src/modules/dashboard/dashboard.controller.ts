@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Patch, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { query } from "express";
 import { RequestCoordinator } from "./dto/RequestCoordinators";
 import { DashboardService } from "./dashboard.service";
 import { ChangeCoordinatorStatusDto } from "./dto/ChangeCoordinatorStatusDto";
@@ -9,13 +8,15 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { ShelterService } from "../shelter/shelter.service";
 import { SearchShelter } from "../shelter/dto/search-shelter";
+import { DistributionPointStatus } from "../distribution-points/shared/enums";
+import { ChangeDistributionPointStatusDto } from "./dto/ChangeDistributionPointStatusDto";
 
 @ApiTags('Dashboard')
 @Controller('/dashboard')
 export class DashboardController {
     constructor(
         private dashboardService: DashboardService,
-        private shelterService: ShelterService
+        private shelterService: ShelterService,
     ){}
 
     @ApiBearerAuth()
@@ -45,11 +46,29 @@ export class DashboardController {
 
 
     @ApiBearerAuth()
-    @UseGuards(AuthGuard('jwt'), RolesGuard) 
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles('admin')
-    @Get('/shelters')        
+    @Get('/shelters')
     async shelters(@Query() query: SearchShelter) {
-        return this.shelterService.listAll(query)        
+        return this.shelterService.listAll(query)
+    }
+
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles('admin')
+    @Patch('/shelters')
+    async changeShelterStatus(@Body() dto: ChangeCoordinatorStatusDto) {
+        const shelter = await this.shelterService.changeStatus(dto.id, dto.status)
+        return { message: `O abrigo foi alterado para o status: ${shelter.status}` }
+    }
+
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles('admin')
+    @Patch('/distribution-points')
+    async changeDistributionPointStatus(@Body() dto: ChangeDistributionPointStatusDto) {
+        const status = await this.dashboardService.changeDistributionPointStatus(dto.id, dto.status);
+        return { message: `O ponto de distribuição foi alterado para o status: ${status}` };
     }
 
   /*  @ApiBearerAuth()

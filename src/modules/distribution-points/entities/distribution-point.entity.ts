@@ -17,6 +17,7 @@ import {
 import { FileUploadEntity } from 'src/modules/upload/entities/file.entity';
 import { PointRequestedProduct } from './point-requested-product.entity';
 import { DistributionPointStatus } from '../shared';
+import { Shelter } from 'src/modules/shelter/entities/shelter.entity';
 
 @Entity('distribution_points')
 export class DistributionPoint {

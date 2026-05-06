@@ -54,6 +54,7 @@ export class DistributionPointController {
     return this.service.findById(id, {
       address: true,
       files: true,
+      shelter: true,
     });
   }
 
