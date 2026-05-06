@@ -6,6 +6,8 @@ import {
   Entity,
   Index,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   OneToOne,
@@ -59,13 +61,11 @@ export class DistributionPoint {
   @JoinColumn()
   address: Address;
 
-  @Index()
-  @Column({ type: 'uuid', nullable: true })
-  shelterId: string | null;
-
-  @ManyToOne(() => Shelter, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'shelterId' })
-  shelter: Shelter | null;
+  @ManyToMany(() => User, (user) => user.distributionPointCoordinators, {
+    nullable: true,
+  })
+  @JoinTable()
+  coordinators: User[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

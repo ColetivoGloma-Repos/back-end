@@ -73,6 +73,36 @@ export class DistributionPointController {
     });
   }
 
+  @Get(':id([0-9a-fA-F-]{36})/coordinators')
+  async listCoordinators(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<{ coordinators: any[] }> {
+    return this.service.listCoordinators(id);
+  }
+
+  @Patch(':id([0-9a-fA-F-]{36})/coordinator')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
+  async addCoordinator(
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
+  ): Promise<DistributionPoint> {
+    return this.service.addCoordinator(id, currentUser.id);
+  }
+
+  @Delete(':id([0-9a-fA-F-]{36})/coordinator/:coordinatorId([0-9a-fA-F-]{36})')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Roles('coordinator', 'admin')
+  async removeCoordinator(
+    @CurrentUser() currentUser: CreateUserDto,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('coordinatorId', new ParseUUIDPipe({ version: '4' })) coordinatorId: string,
+  ): Promise<{ ok: true }> {
+    return this.service.removeCoordinator(id, currentUser.id);
+  }
+
   @Delete(':id([0-9a-fA-F-]{36})')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
@@ -86,4 +116,6 @@ export class DistributionPointController {
       userId: currentUser.id,
     });
   }
+
+
 }
