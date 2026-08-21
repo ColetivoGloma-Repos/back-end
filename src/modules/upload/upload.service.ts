@@ -31,19 +31,10 @@ export class UploadService {
     const spacesEndpoint =
       process.env.SPACES_ENDPOINT?.trim() ||
       (spacesRegion ? `https://${spacesRegion}.digitaloceanspaces.com` : '');
-    const accessKeyId =
-      process.env.SPACES_ACCESS_KEY?.trim() ||
-      process.env.ACCESSKEYID?.trim() ||
-      '';
-    const secretAccessKey =
-      process.env.SPACES_SECRET_KEY?.trim() ||
-      process.env.SECRETACCESSKEY?.trim() ||
-      process.env.SECRETCCESSKEY?.trim() ||
-      '';
-    const bucket =
-      process.env.SPACES_BUCKET?.trim() || process.env.BUCKET?.trim() || '';
-    const region =
-      spacesRegion || process.env.REGION?.trim() || 'us-east-1';
+    const accessKeyId = process.env.SPACES_ACCESS_KEY?.trim() || '';
+    const secretAccessKey = process.env.SPACES_SECRET_KEY?.trim() || '';
+    const bucket = process.env.SPACES_BUCKET?.trim() || '';
+    const region = spacesRegion || 'us-east-1';
 
     if (!spacesEndpoint || !accessKeyId || !secretAccessKey || !bucket) {
       throw new Error(

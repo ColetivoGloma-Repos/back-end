@@ -11,13 +11,6 @@ export const EnvConfig = {
     },
     OPENCAGE: {
         API_KEY: process.env.OPENCAGE_API_KEY
-    }, 
-    S3: {
-        REGION: process.env.REGION,
-        ACCESS_KEY_ID: process.env.ACCESSKEYID,
-        SECRET_ACCESS_KEY: process.env.SECRETCCESSKEY,
-        BUCKET: process.env.BUCKET,
-        ACL: process.env.ACL
     },
     JWT_SECRET:{
         JWT_SECRET: process.env.JWT_SECRET
